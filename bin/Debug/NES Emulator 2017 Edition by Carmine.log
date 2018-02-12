@@ -1,0 +1,6 @@
+﻿  main.cpp
+..\src\main.cpp(9): fatal error C1083: Non è possibile aprire il file inclusione: 'sdl.h': No such file or directory
+  strlen.cpp
+  memset.cpp
+  memcpy.cpp
+  Generazione del codice in corso...

@@ -1,0 +1,3 @@
+19:19:54: Internal Memory allocated.
+19:19:54: Registered window class.
+19:19:54: Created window.

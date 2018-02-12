@@ -1,0 +1,2 @@
+19:16:05: Internal Memory allocated.
+19:16:09: Registered window class.

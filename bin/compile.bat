@@ -1,0 +1,1 @@
+cl ..\src\main.cpp ..\lib\memcpy.obj ..\lib\memset.obj ..\lib\strlen.obj -oNES.exe -GS- -GR- -GX- -FaNES.asm -FAcsu -Zi -showIncludes -Wall -I c:\users\carmine\downloads\sdl2-devel-2.0.5-vc\sdl-2.0.5\include -link -nodefaultlib kernel32.lib gdi32.lib user32.lib
