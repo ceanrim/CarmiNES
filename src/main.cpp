@@ -4,20 +4,26 @@
    $Revision: $
    $Creator: Carmine Foggia $
    ======================================================================== */
-
 #include <windows.h>
-#include <sdl.h>
-#include "..\lib\include.h"
-void TestRender() //We just make the screen red for test purposes.
+#include <SDL.h>
+#include <SDL_SysWM.h>
+#include "main.h"
+#include "cpu.h"
+#include "memory.h"
+namespace globals
 {
-    for(int i = 0; i < 1366 * 768; i++)
-    {
-        RenderBuffer[i] = 0x00FF0000;
-    }
+    int Region = PAL;
+    float Speed = 1;
+    bool Running;
+    HANDLE LogFileHandle = INVALID_HANDLE_VALUE;
+    unsigned char *InternalMemory = NULL;
+    unsigned char *CartridgeMemory = NULL;
+    WNDPROC SDLWindowCallback;
+    const char ToHex[] = {'0', '1', '2', '3',
+                         '4', '5', '6', '7',
+                         '8', '9', 'a', 'b',
+                         'c', 'd', 'e', 'f'};
 }
-bool Running = true; // if this is false the program closes
-HANDLE LogFileHandle = INVALID_HANDLE_VALUE; //The handle to the log file
-unsigned char *InternalMemory = NULL; //Memory addresses between 0x0000 and 0x07FF
 bool TimeString(char *Out) /*Outputs the system time as a string.
                             *Argument needs to be 9 bytes*/
 {
@@ -35,13 +41,28 @@ bool TimeString(char *Out) /*Outputs the system time as a string.
     Out[8] = 0;
     return true;
 }
+bool WriteToLog(char* Message) //Writes the message to the log file
+{
+    DWORD MessageNumberOfBytesWritten = 0;
+    WriteFile(globals::LogFileHandle,
+              Message,
+              strlen(Message),
+              &MessageNumberOfBytesWritten,
+              NULL);
+    if(MessageNumberOfBytesWritten != strlen(Message))
+    {
+        return false;
+    }
+    return true;
+}
 bool Log(char *Message)
-//string has to be null-terminated, prints "HH:MM:SS: Message\n"
+//writes to the log file the time in the HH:MM:SS format followed by a colon,
+//then the message, then a newline
 {
     char Time[9];
     TimeString(Time);
     DWORD TimeNumberOfBytesWritten = 0;
-    WriteFile(LogFileHandle,
+    WriteFile(globals::LogFileHandle,
               Time,
               8,
               &TimeNumberOfBytesWritten,
@@ -52,7 +73,7 @@ bool Log(char *Message)
     }
     char colon [2] = {':', ' '};
     DWORD ColonNumberOfBytesWritten = 0;
-    WriteFile(LogFileHandle,
+    WriteFile(globals::LogFileHandle,
               &colon,
               2,
               &ColonNumberOfBytesWritten,
@@ -62,7 +83,7 @@ bool Log(char *Message)
         return false;
     }
     DWORD MessageNumberOfBytesWritten = 0;
-    WriteFile(LogFileHandle,
+    WriteFile(globals::LogFileHandle,
               Message,
               strlen(Message),
               &MessageNumberOfBytesWritten,
@@ -73,7 +94,7 @@ bool Log(char *Message)
     }
     char *newLine = "\r\n";
     DWORD newLineNumberOfBytesWritten = 0;
-    WriteFile(LogFileHandle,
+    WriteFile(globals::LogFileHandle,
               newLine,
               2,
               &newLineNumberOfBytesWritten,
@@ -111,14 +132,14 @@ bool CreateLogFile()
     LogName[17] = 'x';
     LogName[18] = 't';
     LogName[19] =  0;
-    LogFileHandle = CreateFile(LogName,
+    globals::LogFileHandle = CreateFile(LogName,
                                GENERIC_READ | GENERIC_WRITE,
                                FILE_SHARE_READ | FILE_SHARE_WRITE,
                                NULL,
                                CREATE_NEW,
                                FILE_ATTRIBUTE_NORMAL,
                                NULL);
-    if(LogFileHandle == INVALID_HANDLE_VALUE)
+    if(globals::LogFileHandle == INVALID_HANDLE_VALUE)
     {
         return false;
     }
@@ -128,36 +149,299 @@ bool CreateLogFile()
     }
 }
 
+void Render(SDL_Surface *Surface)
+{
+    unsigned *Row = (unsigned *)Surface->pixels;
+    for(int y = 0;
+        y < Surface->h;
+        y++)
+    {
+        unsigned *Pixel = Row;
+        for(int x = 0;
+            x < Surface->w;
+            x++)
+        {
+            *Pixel = 0xFF << Surface->format->Rshift;
+            Pixel++;
+        }
+        Row += Surface->pitch / 4;
+    }
+}
+
+HWND GetHwnd(SDL_Window *Window)
+{
+    SDL_SysWMinfo WindowInfo;
+    SDL_VERSION(&WindowInfo.version);
+    SDL_GetWindowWMInfo(Window, &WindowInfo);
+    return WindowInfo.info.win.window;
+}
+
+LRESULT CALLBACK MainWindowCallback
+(HWND   hWnd,
+ UINT   uMsg,
+ WPARAM wParam,
+ LPARAM lParam)
+{
+    switch(uMsg)
+    {
+        case WM_COMMAND:
+        {
+            switch(wParam & 0xFFFF)
+            {
+                case ID_FILE_EXIT:
+                {
+                    globals::Running = false;
+                    return 0;
+                }
+                case ID_REGION_PAL:
+                {
+                    if(globals::Region == PAL)
+                    {
+                        return 0;
+                    }
+                    globals::Region = PAL;
+                    CheckMenuItem(GetMenu(hWnd), ID_REGION_NTSC, MF_UNCHECKED);
+                    CheckMenuItem(GetMenu(hWnd), ID_REGION_PAL,  MF_CHECKED);
+                    return 0;
+                }
+                case ID_REGION_NTSC:
+                {
+                    if(globals::Region == NTSC)
+                    {
+                        return 0;
+                    }
+                    globals::Region = NTSC;
+                    CheckMenuItem(GetMenu(hWnd), ID_REGION_PAL,  MF_UNCHECKED);
+                    CheckMenuItem(GetMenu(hWnd), ID_REGION_NTSC, MF_CHECKED);
+                    return 0;
+                }
+                case ID_SPEED_0:
+                {
+                    globals::Speed = 0.125f;
+                    goto IDSpeedALL;
+                }
+                case ID_SPEED_1:
+                {
+                    globals::Speed = 0.25f;
+                    goto IDSpeedALL;
+                }
+                case ID_SPEED_2:
+                {
+                    globals::Speed = 0.5f;
+                    goto IDSpeedALL;
+                }
+                case ID_SPEED_3:
+                {
+                    globals::Speed = 0.75f;
+                    goto IDSpeedALL;
+                }
+                case ID_SPEED_5:
+                {
+                    globals::Speed = 1.5f;
+                    goto IDSpeedALL;
+                }
+                case ID_SPEED_1X:
+                {
+                    globals::Speed = 1.f;
+                    goto IDSpeedALL;
+                }
+                case ID_SPEED_2X:
+                {
+                    globals::Speed = 2.f;
+                    goto IDSpeedALL;
+                }
+                case ID_SPEED_4X:
+                {
+                    globals::Speed = 4.f;
+                    goto IDSpeedALL;
+                }
+                IDSpeedALL:
+                {
+                    for(int i = ID_SPEED_0;
+                        i <= ID_SPEED_4X;
+                        i++)
+                    {
+                        CheckMenuItem(GetMenu(hWnd), i, MF_UNCHECKED);
+                    }
+                    CheckMenuItem(GetMenu(hWnd), (wParam & 0xFFFF), MF_CHECKED);
+                    return 0;
+                }
+                default:
+                {
+                    return 0;
+                }
+            }
+        }
+        default:
+        {
+            return CallWindowProc(globals::SDLWindowCallback, hWnd, uMsg, wParam, lParam);
+        }
+    }       
+}
+
 int CALLBACK WinMain
 (HINSTANCE hInstance,
  HINSTANCE hPrevInstance,
  LPSTR     lpCmdLine,
  int       nCmdShow)
 {
+    //Initialise globals
+    globals::Region = PAL;
+    globals::Speed = 1;
+    globals::Running = true;
+    globals::LogFileHandle = INVALID_HANDLE_VALUE;
+    globals::InternalMemory = NULL;
+    globals::CartridgeMemory = NULL;
+
+    
     if(!CreateLogFile())
     {
         //Nothing to write the log to, so we just close
         return 1;
     }
     
-    InternalMemory =
+    globals::InternalMemory =
         (unsigned char *)(VirtualAlloc(0, 2048, MEM_COMMIT, PAGE_READWRITE));
-    if(InternalMemory == NULL)
+    globals::CartridgeMemory =
+        (unsigned char *)(VirtualAlloc(0, 32768, MEM_COMMIT, PAGE_READWRITE));
+    if(globals::InternalMemory == NULL || globals::CartridgeMemory == NULL)
     {
         Log("Aborting. Couldn't allocate space for internal memory.");
         return 1;
     }
+    for(int i = 0; i < 2048; i++)
+    {
+        globals::InternalMemory[i] = (unsigned char)0;
+    }
+
+    Log("Allocated internal memory.");
+    
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
+    {
+        Log("Aborting. Couldn't initialize SDL.");
+        return 1;
+    }
+
+    Log("Initialized SDL.");
+    
+    SDL_Window  *Window = 0;
+    SDL_Surface *Screen = 0;
+    Window = SDL_CreateWindow("NESEmu17 by Carmine",
+                              SDL_WINDOWPOS_UNDEFINED,
+                              SDL_WINDOWPOS_UNDEFINED,
+                              640,
+                              480,
+                              SDL_WINDOW_RESIZABLE);
+    if(!Window)
+    {
+        Log("Aborting. Couldn't create window.");
+        return 1;
+    }
+
+    Log("Created window.");
+
+    HMENU Menu = LoadMenu(hInstance, MAKEINTRESOURCE(IDR_MENU1));
+    if(Menu)
+    {
+        Log("Loaded window menu.");
+        if(SetMenu(GetHwnd(Window), Menu))
+        {
+            Log("Set window menu.");
+        }
+        else
+        {
+            Log("Aborting. Couldn't set menu.");
+            return 1;
+        }
+    }
     else
     {
-        Log("Internal Memory allocated.");
+        Log("Aborting. Couldn't load menu.");
+        return 1;
     }
-    CloseHandle(LogFileHandle);
+
+    MainWindowCallback(GetHwnd(Window), WM_COMMAND, ID_SPEED_1X, 0);
+    
+    Screen = SDL_GetWindowSurface(Window);
+    SDL_FillRect(Screen, 0, SDL_MapRGB(Screen->format, 0xFF, 0xFF, 0xFF));
+    SDL_UpdateWindowSurface(Window);
+    SDL_Event e;
+    globals::SDLWindowCallback = (WNDPROC)(GetWindowLongPtr(GetHwnd(Window), GWLP_WNDPROC));
+    SetWindowLongPtr(GetHwnd(Window), GWLP_WNDPROC,
+                     (LONG_PTR)(&MainWindowCallback));
+    CheckMenuItem(GetMenu(GetHwnd(Window)), ID_REGION_PAL, MF_CHECKED);
+
+    //Initialise CPU
+    CPU::CurrentCycle = 0; //CYCLES START AT 0!!!!
+    CPU::P = 34;
+    CPU::A = 0;
+    CPU::X = 0;
+    CPU::Y = 0;
+    CPU::S = 0xfd;
+    CPU::PC = 0; //It should be equal to the bytes at FFFC-FFFD,
+                 //but we don't have that yet
+    CPU::InstructionCycle = 0;
+    CPU::CurrentCycle = 0;
+    //Test run
+    globals::InternalMemory[0] = 0xa9;
+    globals::InternalMemory[1] = 0xff;
+    while(globals::Running) //Every iteration of this loop is a frame
+    {
+        while(SDL_PollEvent(&e) != 0)
+        {
+            if(e.type == SDL_QUIT)
+            {
+                globals::Running = false;
+            }
+        }
+        //HERE LIETH THE CPU LOOP:
+        while(true)
+        {
+            //TODO: Test
+            if(CPU::CurrentCycle == 2)
+            {
+                char toLog1[] = {globals::ToHex[(CPU::A & 0b11110000) >> 4], 0};
+                char toLog2[] = {globals::ToHex[(CPU::A & 0b00001111)], 0};
+                WriteToLog("A: ");
+                WriteToLog(toLog1);
+                WriteToLog(toLog2);
+                WriteToLog("\r\n");
+                goto quit;
+            }
+            if(CPU::CurrentCycle ==                                                        /*The frame is over,    */
+               NTSC_CYCLE_COUNT+((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region))    /*we pass on to the next*/
+            {
+                break;
+            }
+            if(CPU::InstructionCycle == 0)
+            {
+                CPU::CurrentInstruction = Memory::Read(CPU::PC);
+                CPU::InstructionCycle++;
+                CPU::CurrentCycle++;
+                CPU::PC++;
+                continue;
+            }
+            CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
+            CPU::CurrentCycle++; /*A new cycle starts*/
+        }
+        {
+            char a = CPU::PC+48;
+            Log(&a);
+        }
+        Screen = SDL_GetWindowSurface(Window);
+        Render(Screen);
+        SDL_UpdateWindowSurface(Window);
+    }
+quit:
+    Log("Quitting.");
+    SDL_Quit();
+    CloseHandle(globals::LogFileHandle);
     return 0;
 }
 void WinMainCRTStartup()
 {
-    WinMain(GetModuleHandle(NULL),
-            NULL,
-            GetCommandLine(),
-            SW_SHOWNORMAL);
+    ExitProcess(WinMain(GetModuleHandle(NULL),
+                        NULL,
+                        GetCommandLine(),
+                        SW_SHOWNORMAL));
 }
