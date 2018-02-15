@@ -11,9 +11,9 @@ namespace CPU
     unsigned CurrentCycle;
     unsigned char A, X, Y, S, P;
     unsigned short PC;
-    char InstructionCycle;
+    unsigned char InstructionCycle;
     unsigned char CurrentInstruction;
-    void RunCycle(unsigned char FuncCurrentInstruction, char FuncInstructionCycle)
+    void RunCycle(unsigned char FuncCurrentInstruction, unsigned char FuncInstructionCycle)
     {
         switch(FuncCurrentInstruction & 0b00000011)
         {
@@ -40,17 +40,15 @@ namespace CPU
                     {
                     } break;
                     case 0b10100000: //LDA: Loads the accumulator with the chosen value
-                    {
-                        if(InstructionCycle == 1) //For now we only support immediate
+                    {                             //For now we only support immediate
                                                   //Cycle sequence for immediate addressing mode:
                                                   //Cycle 0: Fetch opcode, increment PC
                                                   //Cycle 1: Fetch value, increment PC
                                                   //Cycle 0 of next instruction: Load value into accumulator
-                        {
-                            CPU::A = Memory::Read(0, 1,
-                                                  ADDR_IMMEDIATE);
-                            InstructionCycle = 0;
-                        }
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     (unsigned char)(FuncCurrentInstruction &
+                                                     (unsigned char)0b00011100),
+                                     &CPU::A);
                     } break;
                     case 0b11000000: //CMP
                     {

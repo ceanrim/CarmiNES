@@ -148,7 +148,37 @@ bool CreateLogFile()
         return true;
     }
 }
-
+void UnsignedtoString(unsigned number, char* string)
+{
+    unsigned numberOfDigits = 0;
+    if(number)
+    {
+        for(int i = 1, tempNumber = number; i <= 10; i++)
+        {
+            tempNumber /= 10;
+            if(!tempNumber)
+            {
+                numberOfDigits = i;
+                break;
+            }
+        }
+        for(int j = 0; j < (10 - numberOfDigits); j++)
+        {
+            string[j] = '0';
+        }
+        for(int k = numberOfDigits - 1; k >= 0; k--)
+        {
+            string[10 - numberOfDigits + k] = (char)((number % 10) + 48);
+            number /= 10;
+        }
+        string[10] = '\0';
+    }
+    else
+    {
+        string[0] = '0';
+        string[1] = '\0';
+    }
+}
 void Render(SDL_Surface *Surface)
 {
     unsigned *Row = (unsigned *)Surface->pixels;
@@ -383,8 +413,18 @@ int CALLBACK WinMain
     CPU::InstructionCycle = 0;
     CPU::CurrentCycle = 0;
     //Test run
-    globals::InternalMemory[0] = 0xa9;
-    globals::InternalMemory[1] = 0xff;
+    CPU::X = 2; //We haven't implemented LDX and LDY yet
+    CPU::Y = 4;
+    globals::InternalMemory[0] = 0xa1;
+    globals::InternalMemory[1] = 0xd4;
+    globals::InternalMemory[2] = 0xb1;
+    globals::InternalMemory[3] = 0xc4;
+    globals::InternalMemory[0xc4] = 0x00;
+    globals::InternalMemory[0xc5] = 0x03;
+    globals::InternalMemory[0xd6] = 0x00;
+    globals::InternalMemory[0xd7] = 0x02;
+    globals::InternalMemory[0x0200] = 0xff;
+    globals::InternalMemory[0x0304] = 0xfe;
     while(globals::Running) //Every iteration of this loop is a frame
     {
         while(SDL_PollEvent(&e) != 0)
@@ -397,8 +437,39 @@ int CALLBACK WinMain
         //HERE LIETH THE CPU LOOP:
         while(true)
         {
-            //TODO: Test
-            if(CPU::CurrentCycle == 2)
+            /* 
+            {
+                char cycleInString[11];
+                UnsignedtoString(CPU::CurrentCycle, cycleInString);
+                WriteToLog("Cycle: ");
+                WriteToLog(cycleInString);
+                WriteToLog("\r\n");
+            }
+            {   
+                char toLog1[] = {globals::ToHex[(CPU::PC & 0b11110000) >> 4], 0};
+                char toLog2[] = {globals::ToHex[(CPU::PC & 0b00001111)], 0};
+                WriteToLog("PC: ");
+                WriteToLog(toLog1);
+                WriteToLog(toLog2);
+                WriteToLog("\r\n");
+            }
+            {
+                char toLog1[] =
+                    {globals::ToHex[(Memory::AddressBus & 0b1111000000000000)
+                                    >> 12], 0};
+                char toLog2[] =
+                    {globals::ToHex[(Memory::AddressBus & 0b0000111100000000) >> 8],
+                     0};
+                char toLog3[] =
+                    {globals::ToHex[(Memory::AddressBus & 0b11110000) >> 4], 0};
+                char toLog4[] = {globals::ToHex[(Memory::AddressBus & 0b00001111)], 0};
+                WriteToLog("AddressBus: ");
+                WriteToLog(toLog1);
+                WriteToLog(toLog2);
+                WriteToLog(toLog3);
+                WriteToLog(toLog4);
+                WriteToLog("\r\n");
+            }
             {
                 char toLog1[] = {globals::ToHex[(CPU::A & 0b11110000) >> 4], 0};
                 char toLog2[] = {globals::ToHex[(CPU::A & 0b00001111)], 0};
@@ -406,14 +477,21 @@ int CALLBACK WinMain
                 WriteToLog(toLog1);
                 WriteToLog(toLog2);
                 WriteToLog("\r\n");
+            }*/
+            //TODO: Test
+            /* if(CPU::CurrentCycle == 11)
+            {
                 goto quit;
-            }
+            }*/
             if(CPU::CurrentCycle ==                                                        /*The frame is over,    */
                NTSC_CYCLE_COUNT+((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region))    /*we pass on to the next*/
             {
+                CPU::CurrentCycle -=
+                    (NTSC_CYCLE_COUNT+
+                     ((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region));
                 break;
             }
-            if(CPU::InstructionCycle == 0)
+            if(CPU::InstructionCycle == 0) //We fetch a new instruction
             {
                 CPU::CurrentInstruction = Memory::Read(CPU::PC);
                 CPU::InstructionCycle++;
@@ -423,10 +501,6 @@ int CALLBACK WinMain
             }
             CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
             CPU::CurrentCycle++; /*A new cycle starts*/
-        }
-        {
-            char a = CPU::PC+48;
-            Log(&a);
         }
         Screen = SDL_GetWindowSurface(Window);
         Render(Screen);
