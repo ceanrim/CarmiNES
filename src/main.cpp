@@ -411,20 +411,21 @@ int CALLBACK WinMain
     CPU::PC = 0; //It should be equal to the bytes at FFFC-FFFD,
                  //but we don't have that yet
     CPU::InstructionCycle = 0;
-    CPU::CurrentCycle = 0;
+    CPU::CurrentCycle = 0;/*
     //Test run
-    CPU::X = 2; //We haven't implemented LDX and LDY yet
-    CPU::Y = 4;
-    globals::InternalMemory[0] = 0xa1;
-    globals::InternalMemory[1] = 0xd4;
-    globals::InternalMemory[2] = 0xb1;
-    globals::InternalMemory[3] = 0xc4;
-    globals::InternalMemory[0xc4] = 0x00;
+    CPU::Y = 2;
+    globals::InternalMemory[0] = 0xa9;
+    globals::InternalMemory[1] = 0x0f;
+    globals::InternalMemory[2] = 0x11;
+    globals::InternalMemory[3] = 0x12;
+    globals::InternalMemory[0x12] = 0xff;
+    globals::InternalMemory[0x13] = 0x00;
+    globals::InternalMemory[0x101] = 0xf0;
     globals::InternalMemory[0xc5] = 0x03;
     globals::InternalMemory[0xd6] = 0x00;
     globals::InternalMemory[0xd7] = 0x02;
     globals::InternalMemory[0x0200] = 0xff;
-    globals::InternalMemory[0x0304] = 0xfe;
+    globals::InternalMemory[0x0304] = 0xfe;*/
     while(globals::Running) //Every iteration of this loop is a frame
     {
         while(SDL_PollEvent(&e) != 0)
@@ -437,7 +438,7 @@ int CALLBACK WinMain
         //HERE LIETH THE CPU LOOP:
         while(true)
         {
-            /* 
+            /*
             {
                 char cycleInString[11];
                 UnsignedtoString(CPU::CurrentCycle, cycleInString);
@@ -477,9 +478,10 @@ int CALLBACK WinMain
                 WriteToLog(toLog1);
                 WriteToLog(toLog2);
                 WriteToLog("\r\n");
-            }*/
+                WriteToLog("\r\n");
+            }
             //TODO: Test
-            /* if(CPU::CurrentCycle == 11)
+             if(CPU::CurrentCycle == 8)
             {
                 goto quit;
             }*/

@@ -26,6 +26,15 @@ namespace CPU
                 {
                     case 0b00000000: //ORA
                     {
+                        unsigned char temp;
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     (unsigned char)(FuncCurrentInstruction &
+                                                     (unsigned char)0b00011100),
+                                     &temp);
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            CPU::A |= temp;
+                        }
                     } break;
                     case 0b00100000: //AND
                     {
