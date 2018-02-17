@@ -172,6 +172,20 @@ namespace CPU
                     } break;
                     case 0b10000000: //STA
                     {
+                        if(FuncCurrentInstruction == 0x89)
+                        {
+                            Memory::Read(PC);
+                            PC++;
+                            CPU::InstructionCycle = 0;
+                        }
+                        else
+                        {
+                            Memory::Write(CPU::A,
+                                          &CPU::InstructionCycle,
+                                          (unsigned char)
+                                          (FuncCurrentInstruction &
+                                           (unsigned char)0b00011100));
+                        }
                     } break;
                     case 0b10100000: //LDA: Loads the accumulator with the chosen value
                     {                             //For now we only support immediate
@@ -195,7 +209,7 @@ namespace CPU
                             }
                             if(CPU::A == 0)
                             {
-                                CPU::P |= 1;
+                                CPU::P |= 2;
                             }
                             else
                             {

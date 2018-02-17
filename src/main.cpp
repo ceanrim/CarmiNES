@@ -406,26 +406,13 @@ int CALLBACK WinMain
     CPU::P = 34;
     CPU::A = 0;
     CPU::X = 0;
-    CPU::Y = 0;
+    CPU::Y = 3;
     CPU::S = 0xfd;
     CPU::PC = 0; //It should be equal to the bytes at FFFC-FFFD,
                  //but we don't have that yet
     CPU::InstructionCycle = 0;
-    CPU::CurrentCycle = 0;/*
-    //Test run
-    CPU::Y = 2;
-    globals::InternalMemory[0] = 0xa9;
-    globals::InternalMemory[1] = 0x05;
-    globals::InternalMemory[2] = 0xe9;
-    globals::InternalMemory[3] = 0x04;
-    globals::InternalMemory[0x12] = 0xff;
-    globals::InternalMemory[0x13] = 0x00;
-    globals::InternalMemory[0x101] = 0xf0;
-    globals::InternalMemory[0xc5] = 0x03;
-    globals::InternalMemory[0xd6] = 0x00;
-    globals::InternalMemory[0xd7] = 0x02;
-    globals::InternalMemory[0x0200] = 0xff;
-    globals::InternalMemory[0x0304] = 0xfe;*/
+    CPU::CurrentCycle = 0;
+    unsigned nOfFrames = 0;
     while(globals::Running) //Every iteration of this loop is a frame
     {
         while(SDL_PollEvent(&e) != 0)
@@ -512,7 +499,7 @@ int CALLBACK WinMain
             }
             WriteToLog("\r\n");
             //TODO: Test
-            if(CPU::CurrentCycle == 4)
+            if(CPU::CurrentCycle == 14)
             {
                 goto quit;
             }*/
@@ -538,8 +525,12 @@ int CALLBACK WinMain
         Screen = SDL_GetWindowSurface(Window);
         Render(Screen);
         SDL_UpdateWindowSurface(Window);
+        nOfFrames++;
     }
 quit:
+    char nOfFramesInString[11];
+    UnsignedtoString(nOfFrames, nOfFramesInString);
+    Log(nOfFramesInString);
     Log("Quitting.");
     SDL_Quit();
     CloseHandle(globals::LogFileHandle);

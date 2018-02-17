@@ -274,10 +274,222 @@ void Memory::Read(unsigned short address,
                 break;
             }
         }
-        default: //TODO
+    }
+}
+void Memory::Write(unsigned short address,
+                   unsigned char valueToWrite)
+{
+    if(address < 0x2000)
+    {
+        globals::InternalMemory[address % 0x800] = valueToWrite;
+    }
+}
+void Memory::Write(unsigned char valueToWrite,
+                   unsigned char* cycle,
+                   unsigned char addrMode)
+{
+    switch(addrMode)
+    {
+        case ADDR_IMMEDIATE:
         {
-            Log("Tried to read memory in a way that has not been implemented");
-            return;
+            Log("An instruction in immediate addressing mode tried to write.");
+        } break;
+        case ADDR_ZERO_PAGE:
+        {
+            if(*cycle == 1)
+            {
+                AddressBus = Read(CPU::PC);
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 2)
+            {
+                Memory::Write(AddressBus, valueToWrite);
+                (*cycle) = 0;
+                break;
+            }
+        } break;
+        case ADDR_ZERO_PAGE_X:
+        {
+            if(*cycle == 1)
+            {
+                AddressBus = Read(CPU::PC);
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 2)
+            {
+                Read(AddressBus);
+                AddressBus += CPU::X;
+                AddressBus &= 255;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 3)
+            {
+                Memory::Write(AddressBus, valueToWrite);
+                (*cycle) = 0;
+                break;
+            }
+        }
+        case ADDR_ABSOLUTE:
+        {
+            if(*cycle == 1)
+            {
+                AddressBus = Memory::Read(CPU::PC);
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 2)
+            {
+                AddressBus |= (Memory::Read(CPU::PC) << 8);
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 3)
+            {
+                Memory::Write(AddressBus, valueToWrite);
+                (*cycle) = 0;
+                break;
+            }
+        }
+        case ADDR_ABSOLUTE_X:
+        {
+            if(*cycle == 1)
+            {
+                AddressBus = Memory::Read(CPU::PC);
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 2)
+            {
+                AddressBus |= (Memory::Read(CPU::PC) << 8);
+                AddressBus += CPU::X;
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 3)
+            {
+                Memory::Read(AddressBus - 256);
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 4)
+            {
+                Memory::Write(AddressBus, valueToWrite);
+                (*cycle) = 0;
+                break;
+            }
+        }
+        case ADDR_ABSOLUTE_Y:
+        {
+            if(*cycle == 1)
+            {
+                AddressBus = Memory::Read(CPU::PC);
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 2)
+            {
+                AddressBus |= (Memory::Read(CPU::PC) << 8);
+                AddressBus += CPU::Y;
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 3)
+            {
+                Memory::Read(AddressBus - 256);
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 4)
+            {
+                Memory::Write(AddressBus, valueToWrite);
+                (*cycle) = 0;
+                break;
+            }
+        }
+        case ADDR_INDIRECT_X:
+        {
+            if(*cycle == 1)
+            {
+                AddressBus = Memory::Read(CPU::PC);
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 2)
+            {
+                Memory::Read(AddressBus);
+                AddressBus += CPU::X;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 3)
+            {
+                temp = Memory::Read(AddressBus);
+                AddressBus++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 4)
+            {
+                temp |= ((Memory::Read(AddressBus)) << 8);
+                AddressBus = temp;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 5)
+            {
+                Memory::Write(AddressBus, valueToWrite);
+                (*cycle) = 0;
+                break;
+            }
+        }
+        case ADDR_INDIRECT_Y:
+        {
+            if(*cycle == 1)
+            {
+                AddressBus = Memory::Read(CPU::PC);
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 2)
+            {
+                temp = Memory::Read(AddressBus);
+                AddressBus++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 3)
+            {
+                temp |= (Memory::Read(AddressBus) << 8);
+                AddressBus = temp;
+                AddressBus += CPU::Y;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 4)
+            {
+                Memory::Read(AddressBus - 256);
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 5)
+            {
+                Memory::Write(AddressBus, valueToWrite);
+                (*cycle) = 0;
+                break;
+            }
         }
     }
 }

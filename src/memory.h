@@ -25,7 +25,13 @@ namespace Memory
     extern void Read(unsigned short address,   //Processes addressing modes
                      unsigned char* cycle,     //in a cycle-accurate way
                      unsigned char  addrMode,
-                     unsigned char* valueToRewrite); 
+                     unsigned char* valueToRewrite);
+    extern void Write(unsigned short address,
+                      unsigned char valueToWrite);
+    extern void Write(unsigned char valueToWrite,
+                      unsigned char* cycle,
+                      unsigned char addrMode);
+
     extern bool AddressCarry;
 }
 
