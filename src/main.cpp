@@ -415,9 +415,9 @@ int CALLBACK WinMain
     //Test run
     CPU::Y = 2;
     globals::InternalMemory[0] = 0xa9;
-    globals::InternalMemory[1] = 0x0f;
-    globals::InternalMemory[2] = 0x11;
-    globals::InternalMemory[3] = 0x12;
+    globals::InternalMemory[1] = 0x05;
+    globals::InternalMemory[2] = 0xe9;
+    globals::InternalMemory[3] = 0x04;
     globals::InternalMemory[0x12] = 0xff;
     globals::InternalMemory[0x13] = 0x00;
     globals::InternalMemory[0x101] = 0xf0;
@@ -446,12 +446,11 @@ int CALLBACK WinMain
                 WriteToLog(cycleInString);
                 WriteToLog("\r\n");
             }
-            {   
-                char toLog1[] = {globals::ToHex[(CPU::PC & 0b11110000) >> 4], 0};
-                char toLog2[] = {globals::ToHex[(CPU::PC & 0b00001111)], 0};
+            {
+                char PCInString[11];
+                UnsignedtoString(CPU::PC, PCInString);
                 WriteToLog("PC: ");
-                WriteToLog(toLog1);
-                WriteToLog(toLog2);
+                WriteToLog(PCInString);
                 WriteToLog("\r\n");
             }
             {
@@ -478,10 +477,42 @@ int CALLBACK WinMain
                 WriteToLog(toLog1);
                 WriteToLog(toLog2);
                 WriteToLog("\r\n");
-                WriteToLog("\r\n");
             }
+            if(CPU::P & 128)
+            {
+                WriteToLog("Negative flag set.\r\n");
+            }
+            else
+            {
+                WriteToLog("Negative flag not set.\r\n");
+            }
+            if(CPU::P & 64)
+            {
+                WriteToLog("Overflow flag set.\r\n");
+            }
+            else
+            {
+                WriteToLog("Overflow flag not set.\r\n");
+            }
+            if(CPU::P & 2)
+            {
+                WriteToLog("Zero flag set.\r\n");
+            }
+            else
+            {
+                WriteToLog("Zero flag not set.\r\n");
+            }
+            if(CPU::P & 1)
+            {
+                WriteToLog("Carry flag set.\r\n");
+            }
+            else
+            {
+                WriteToLog("Carry flag not set.\r\n");
+            }
+            WriteToLog("\r\n");
             //TODO: Test
-             if(CPU::CurrentCycle == 8)
+            if(CPU::CurrentCycle == 4)
             {
                 goto quit;
             }*/

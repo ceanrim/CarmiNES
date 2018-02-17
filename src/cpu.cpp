@@ -35,15 +35,140 @@ namespace CPU
                         {
                             CPU::A |= temp;
                         }
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            if(CPU::A & 128)
+                            {
+                                CPU::P |= 128;
+                            }
+                            else
+                            {
+                                CPU::P &= 127;
+                            }
+                            if(CPU::A == 0)
+                            {
+                                CPU::P |= 2;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                        }
                     } break;
                     case 0b00100000: //AND
                     {
+                        unsigned char temp;
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     (unsigned char)(FuncCurrentInstruction &
+                                                     (unsigned char)0b00011100),
+                                     &temp);
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            CPU::A &= temp;
+                            if(CPU::A & 128)
+                            {
+                                CPU::P |= 128;
+                            }
+                            else
+                            {
+                                CPU::P &= 127;
+                            }
+                            if(CPU::A == 0)
+                            {
+                                CPU::P |= 2;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                        }
                     } break;
                     case 0b01000000: //EOR
                     {
+                        unsigned char temp;
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     (unsigned char)(FuncCurrentInstruction &
+                                                     (unsigned char)0b00011100),
+                                     &temp);
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            CPU::A ^= temp;
+                            if(CPU::A & 128)
+                            {
+                                CPU::P |= 128;
+                            }
+                            else
+                            {
+                                CPU::P &= 127;
+                            }
+                            if(CPU::A == 0)
+                            {
+                                CPU::P |= 2;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                        }
                     } break;
                     case 0b01100000: //ADC
                     {
+                        unsigned char temp;
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     (unsigned char)(FuncCurrentInstruction &
+                                                     (unsigned char)0b00011100),
+                                     &temp);
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            bool Carry = false;
+                            bool Overflow = false;
+                            if(((unsigned short)CPU::A
+                                + (unsigned short)temp
+                                + (unsigned short)(CPU::P & 1)) >= 256)
+                            {
+                                Carry = true;
+                            }
+                            if((CPU::A^(CPU::A+temp+(CPU::P & 1))) &
+                               (temp^(CPU::A+temp+(CPU::P & 1))) &
+                               0x80)
+                            {
+                                Overflow = true;
+                            }
+                            CPU::A += temp;
+                            CPU::A += (CPU::P & 1);
+                            if(Carry)
+                            {
+                                CPU::P |= 1;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111110;
+                            }
+                            if(Overflow)
+                            {
+                                CPU::P |= 64;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b10111111;
+                            }
+                            if(CPU::A == 0)
+                            {
+                                CPU::P |= 2;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                            if(CPU::A & 128)
+                            {
+                                CPU::P |= 128;
+                            }
+                            else
+                            {
+                                CPU::P &= 127;
+                            }
+                        }
                     } break;
                     case 0b10000000: //STA
                     {
@@ -58,12 +183,121 @@ namespace CPU
                                      (unsigned char)(FuncCurrentInstruction &
                                                      (unsigned char)0b00011100),
                                      &CPU::A);
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            if(CPU::A & 128)
+                            {
+                                CPU::P |= 128;
+                            }
+                            else
+                            {
+                                CPU::P &= 127;
+                            }
+                            if(CPU::A == 0)
+                            {
+                                CPU::P |= 1;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                        }
                     } break;
                     case 0b11000000: //CMP
                     {
+                        unsigned char temp;
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     (unsigned char)(FuncCurrentInstruction &
+                                                     (unsigned char)0b00011100),
+                                     &temp);
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            if(((CPU::A)-(temp)) & 128)
+                            {
+                                CPU::P |= 128;
+                            }
+                            else
+                            {
+                                CPU::P &= 127;
+                            }
+                            if(CPU::A == temp)
+                            {
+                                CPU::P |= 2;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                            if(temp <= CPU::A)
+                            {
+                                CPU::P |= 1;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111110;
+                            }
+                        }
                     } break;
                     case 0b11100000: //SBC
                     {
+                        
+                        unsigned char temp;
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     (unsigned char)(FuncCurrentInstruction &
+                                                     (unsigned char)0b00011100),
+                                     &temp);
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            bool Carry = false;
+                            bool Overflow = false;
+                            if((unsigned short)((unsigned short)CPU::A
+                                                + (unsigned short)(~temp & 255)
+                                                + (unsigned short)(CPU::P & 1))
+                               >= 256)
+                            {
+                                Carry = true;
+                            }
+                            if((CPU::A^(CPU::A+~temp+(CPU::P & 1))) &
+                               (~temp^(CPU::A+~temp+(CPU::P & 1))) &
+                               0x80)
+                            {
+                                Overflow = true;
+                            }
+                            CPU::A += ~temp;
+                            CPU::A += (CPU::P & 1);
+                            if(Carry)
+                            {
+                                CPU::P |= 1;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111110;
+                            }
+                            if(Overflow)
+                            {
+                                CPU::P |= 64;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b10111111;
+                            }
+                            if(CPU::A == 0)
+                            {
+                                CPU::P |= 2;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                            if(CPU::A & 128)
+                            {
+                                CPU::P |= 128;
+                            }
+                            else
+                            {
+                                CPU::P &= 127;
+                            }
+                        }
                     } break;
                 }
             } break;
