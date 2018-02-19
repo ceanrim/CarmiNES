@@ -8,7 +8,7 @@
 #include <windows.h>
 #include <SDL.h>
 #include <SDL_SysWM.h>
-#include "..\bin\resource.h"
+#include "..\res\resource.h"
 #include "..\lib\include.h"
 #define MAIN_H
 #define PAL 1

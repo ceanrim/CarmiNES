@@ -1,0 +1,1 @@
+This uses the GTK+ library, which is licensed under the GNU LGPL, and is copyright of the GTK+ team. I did NOT create the GTK+ library.
