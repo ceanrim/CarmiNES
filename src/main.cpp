@@ -403,7 +403,7 @@ int CALLBACK WinMain
 
     //Initialise CPU
     CPU::CurrentCycle = 0; //CYCLES START AT 0!!!!
-    CPU::P = 34;
+    CPU::P = 98;
     CPU::A = 0;
     CPU::X = 0;
     CPU::Y = 3;
@@ -480,6 +480,22 @@ int CALLBACK WinMain
             else
             {
                 WriteToLog("Overflow flag not set.\r\n");
+            }
+            if(CPU::P & 8)
+            {
+                WriteToLog("Decimal flag set.\r\n");
+            }
+            else
+            {
+                WriteToLog("Decimal flag not set.\r\n");
+            }
+            if(CPU::P & 4)
+            {
+                WriteToLog("Interrupt flag set.\r\n");
+            }
+            else
+            {
+                WriteToLog("Interrupt flag not set.\r\n");
             }
             if(CPU::P & 2)
             {
