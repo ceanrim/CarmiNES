@@ -17,8 +17,48 @@ namespace CPU
     {
         switch(FuncCurrentInstruction & 0b00000011)
         {
-            case 0:
+            case 0: //BIT JMP STY LDY CPY CPX BPL BMI BVC BVS BCC BCS BNE BEQ BRK
+                    //JSR RTI RTS PHP PLP PHA PLA DEY TAY INY INX CLC SEC CLI SEI
+                    //TYA CLV CLD SED
             {
+                switch(FuncCurrentInstruction)
+                {
+                    case 0x18: //CLC
+                    {
+                        P &= 0b11111110;
+                        CPU::InstructionCycle = 0;
+                    } break;
+                    case 0x38: //SEC
+                    {
+                        P |= 1;
+                        CPU::InstructionCycle = 0;
+                    } break;
+                    case 0x58: //CLI
+                    {
+                        P &= 0b11111011;
+                        CPU::InstructionCycle = 0;
+                    } break;
+                    case 0x78: //SEI
+                    {
+                        P |= 4;
+                        CPU::InstructionCycle = 0;
+                    } break;
+                    case 0xB8: //CLV
+                    {
+                        P &= 0b10111111;
+                        CPU::InstructionCycle = 0;
+                    } break;
+                    case 0xD8: //CLD
+                    {
+                        P &= 0b11110111;
+                        CPU::InstructionCycle = 0;
+                    } break;
+                    case 0xF8: //SED
+                    {
+                        P |= 8;
+                        CPU::InstructionCycle = 0;
+                    } break;
+                }
             } break;
             case 1: //ORA AND EOR ADC STA LDA CMP SBC
             {
@@ -170,7 +210,8 @@ namespace CPU
                             }
                         }
                     } break;
-                    case 0b10000000: //STA
+                    case 0b10000000: //STA, 2 cycles NOP if called with immediate
+                                     //addressing mode
                     {
                         if(FuncCurrentInstruction == 0x89)
                         {
@@ -187,12 +228,8 @@ namespace CPU
                                            (unsigned char)0b00011100));
                         }
                     } break;
-                    case 0b10100000: //LDA: Loads the accumulator with the chosen value
-                    {                             //For now we only support immediate
-                                                  //Cycle sequence for immediate addressing mode:
-                                                  //Cycle 0: Fetch opcode, increment PC
-                                                  //Cycle 1: Fetch value, increment PC
-                                                  //Cycle 0 of next instruction: Load value into accumulator
+                    case 0b10100000: //LDA
+                    {                     
                         Memory::Read((unsigned short)0, &CPU::InstructionCycle,
                                      (unsigned char)(FuncCurrentInstruction &
                                                      (unsigned char)0b00011100),
