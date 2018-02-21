@@ -10,6 +10,8 @@
 unsigned short Memory::AddressBus;
 unsigned short Memory::temp;
 bool Memory::AddressCarry = false;
+unsigned char ConversionTable[] = {ADDR_IMMEDIATE, ADDR_ZERO_PAGE, 0,
+                                   ADDR_ABSOLUTE, ADDR_ZERO_PAGE_X, ADDR_ABSOLUTE_X}
 unsigned char Memory::Read(unsigned short Address)
 /*NES memory structure:
   0x0000-0x07ff Internal Memory
@@ -57,6 +59,30 @@ void Memory::Read(unsigned short address,
             {
                 Read(AddressBus);
                 AddressBus += CPU::X;
+                AddressBus &= 255;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 3)
+            {
+                *valueToRewrite = Memory::Read(AddressBus);
+                (*cycle) = 0;
+                break;
+            }
+        }
+        case ADDR_ZERO_PAGE_Y:
+        {
+            if(*cycle == 1)
+            {
+                AddressBus = Read(CPU::PC);
+                CPU::PC++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 2)
+            {
+                Read(AddressBus);
+                AddressBus += CPU::Y;
                 AddressBus &= 255;
                 (*cycle)++;
                 break;
@@ -292,7 +318,6 @@ void Memory::Write(unsigned char valueToWrite,
     {
         case ADDR_IMMEDIATE:
         {
-            Log("An instruction in immediate addressing mode tried to write.");
         } break;
         case ADDR_ZERO_PAGE:
         {
