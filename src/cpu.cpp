@@ -358,7 +358,7 @@ namespace CPU
                 {
                     case 0b10100000: //LDX
                     {
-                        unsigned char addrMode = ConversionTable
+                        unsigned char addrMode = Memory::ConversionTable
                             [(((unsigned char)(FuncCurrentInstruction &
                                                (unsigned char)0b00011100)) >> 2)];
                         if(addrMode == ADDR_ZERO_PAGE_X)

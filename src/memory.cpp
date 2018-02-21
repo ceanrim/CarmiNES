@@ -10,8 +10,9 @@
 unsigned short Memory::AddressBus;
 unsigned short Memory::temp;
 bool Memory::AddressCarry = false;
-unsigned char ConversionTable[] = {ADDR_IMMEDIATE, ADDR_ZERO_PAGE, 0,
-                                   ADDR_ABSOLUTE, ADDR_ZERO_PAGE_X, ADDR_ABSOLUTE_X}
+unsigned char Memory::ConversionTable[] = {ADDR_IMMEDIATE, ADDR_ZERO_PAGE, 0,
+                                           ADDR_ABSOLUTE, 0, ADDR_ZERO_PAGE_X,
+                                           0, ADDR_ABSOLUTE_X};
 unsigned char Memory::Read(unsigned short Address)
 /*NES memory structure:
   0x0000-0x07ff Internal Memory
