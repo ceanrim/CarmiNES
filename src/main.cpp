@@ -7,6 +7,7 @@
 #include <windows.h>
 #include <SDL.h>
 #include <SDL_SysWM.h>
+#include "..\bin\resource.h"
 #include "main.h"
 #include "cpu.h"
 #include "memory.h"
@@ -413,6 +414,10 @@ int CALLBACK WinMain
     CPU::InstructionCycle = 0;
     CPU::CurrentCycle = 0;
     unsigned nOfFrames = 0;
+    globals::InternalMemory[0] = 0xbe;
+    globals::InternalMemory[1] = 0xfe;
+    globals::InternalMemory[2] = 0x00;
+    globals::InternalMemory[0x101] = 0xff;
     while(globals::Running) //Every iteration of this loop is a frame
     {
         while(SDL_PollEvent(&e) != 0)
@@ -425,7 +430,7 @@ int CALLBACK WinMain
         //HERE LIETH THE CPU LOOP:
         while(true)
         {
-            /*
+            
             {
                 char cycleInString[11];
                 UnsignedtoString(CPU::CurrentCycle, cycleInString);
@@ -461,6 +466,14 @@ int CALLBACK WinMain
                 char toLog1[] = {globals::ToHex[(CPU::A & 0b11110000) >> 4], 0};
                 char toLog2[] = {globals::ToHex[(CPU::A & 0b00001111)], 0};
                 WriteToLog("A: ");
+                WriteToLog(toLog1);
+                WriteToLog(toLog2);
+                WriteToLog("\r\n");
+            }
+            {
+                char toLog1[] = {globals::ToHex[(CPU::X & 0b11110000) >> 4], 0};
+                char toLog2[] = {globals::ToHex[(CPU::X & 0b00001111)], 0};
+                WriteToLog("X: ");
                 WriteToLog(toLog1);
                 WriteToLog(toLog2);
                 WriteToLog("\r\n");
@@ -518,7 +531,7 @@ int CALLBACK WinMain
             if(CPU::CurrentCycle == 14)
             {
                 goto quit;
-            }*/
+            }
             if(CPU::CurrentCycle ==                                                        /*The frame is over,    */
                NTSC_CYCLE_COUNT+((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region))    /*we pass on to the next*/
             {

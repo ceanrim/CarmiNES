@@ -14,7 +14,7 @@
 #define ADDR_ZERO_PAGE_X 0b00010100
 #define ADDR_ABSOLUTE_Y  0b00011000
 #define ADDR_ABSOLUTE_X  0b00011100
-
+#define ADDR_ZERO_PAGE_Y 0b00100000
 namespace Memory
 {
     extern unsigned short AddressBus; //To hold data between cycles
@@ -31,7 +31,7 @@ namespace Memory
     extern void Write(unsigned char valueToWrite,
                       unsigned char* cycle,
                       unsigned char addrMode);
-
+    extern unsigned char ConversionTable[]; //for xxxxxx00 instructions
     extern bool AddressCarry;
 }
 

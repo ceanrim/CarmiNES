@@ -352,15 +352,57 @@ namespace CPU
                     } break;
                 }
             } break;
-            case 2:
+            case 2: //ASL ROL LSR ROR STX LDX DEC INC
             {
+                switch(FuncCurrentInstruction & 0b11100000)
+                {
+                    case 0b10100000: //LDX
+                    {
+                        unsigned char addrMode = Memory::ConversionTable
+                            [(((unsigned char)(FuncCurrentInstruction &
+                                               (unsigned char)0b00011100)) >> 2)];
+                        if(addrMode == ADDR_ZERO_PAGE_X)
+                        {
+                            addrMode = ADDR_ZERO_PAGE_Y;
+                        }
+                        if(addrMode == ADDR_ABSOLUTE_X)
+                        {
+                            addrMode = ADDR_ABSOLUTE_Y;
+                        }
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     addrMode,
+                                     &CPU::X);
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            if(CPU::X & 128)
+                            {
+                                CPU::P |= 128;
+                            }
+                            else
+                            {
+                                CPU::P &= 127;
+                            }
+                            if(CPU::X == 0)
+                            {
+                                CPU::P |= 2;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                        }
+                    } break;
+                    default:
+                    {
+                        return;
+                    }
+                }
             } break;
             case 3:
             {
             } break;
             default: //This is not supposed to happen
             {
-                Log("Error. Instruction & 0b00000011 greater than 3");
                 return;
             }
         }
