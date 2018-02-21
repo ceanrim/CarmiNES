@@ -7,10 +7,11 @@
 #include <windows.h>
 #include <SDL.h>
 #include <SDL_SysWM.h>
-#include "..\bin\resource.h"
+#include "..\res\resource.h"
 #include "main.h"
 #include "cpu.h"
 #include "memory.h"
+bool IsAROMLoaded = false;
 namespace globals
 {
     int Region = PAL;
@@ -192,7 +193,7 @@ void Render(SDL_Surface *Surface)
             x < Surface->w;
             x++)
         {
-            *Pixel = 0xFF << Surface->format->Rshift;
+            *Pixel = 0;
             Pixel++;
         }
         Row += Surface->pitch / 4;
@@ -207,6 +208,59 @@ HWND GetHwnd(SDL_Window *Window)
     return WindowInfo.info.win.window;
 }
 
+bool LoadROM(char *path)
+{
+    HANDLE FileHandle = CreateFile(path,
+                                   GENERIC_READ,
+                                   FILE_SHARE_READ,
+                                   NULL,
+                                   OPEN_EXISTING,
+                                   FILE_ATTRIBUTE_NORMAL |
+                                   FILE_FLAG_OVERLAPPED,
+                                   NULL);
+    DWORD FileSizeHigh, FileSizeLow;
+    FileSizeLow = GetFileSize(FileHandle, &FileSizeHigh);
+    if(FileSizeLow < 16)
+    {
+        MessageBox(0, TEXT("File too small"), TEXT("Error"), MB_OK);
+        return false;
+    }
+    void *FileMemory = VirtualAlloc(0, FileSizeLow, MEM_COMMIT, PAGE_READWRITE);
+    OVERLAPPED ol {};
+    DWORD BytesRead;
+    ReadFile(FileHandle,
+             FileMemory,
+             FileSizeLow,
+             &BytesRead,
+             &ol);
+    unsigned char *FileMemoryChar     = (unsigned char *)(FileMemory);
+    unsigned      *FileMemoryUnsigned = (unsigned *)(FileMemory);
+    if(FileMemoryUnsigned[0] != 0x1A53454E) //NES\x14
+    {
+        MessageBox(0, TEXT("Invalid NES file."), TEXT("Error"), MB_OK);
+        return false;
+    }
+    Memory::Mapper = (FileMemoryChar[6] >> 4) | (FileMemoryChar[7] & 0xF0);
+    if(Memory::Mapper != 0)
+    {
+        MessageBox(0, TEXT("Unsupported mapper."), TEXT("Error"), MB_OK);
+        return false;
+    }
+    Memory::PRGROMSize = FileMemoryChar[4] << 14;
+    if((Memory::PRGROMSize != 16384) && (Memory::PRGROMSize != 32768))
+    {
+        MessageBox(0, TEXT("Mapper 0 file of size different from 16k or 32k."),
+                           TEXT("Error"), MB_OK);
+        return false;
+    }
+    unsigned char *PRGROM = FileMemoryChar + 16;
+    memcpy(globals::CartridgeMemory, PRGROM, Memory::PRGROMSize);
+    CloseHandle(FileHandle);
+    IsAROMLoaded = true;
+    CPU::Reset();
+    return true;
+}
+
 LRESULT CALLBACK MainWindowCallback
 (HWND   hWnd,
  UINT   uMsg,
@@ -219,6 +273,28 @@ LRESULT CALLBACK MainWindowCallback
         {
             switch(wParam & 0xFFFF)
             {
+                case ID_FILE_OPEN:
+                {
+                    char FileToOpen[256] {};
+                    OPENFILENAME OpenFile {};
+                    OpenFile.lStructSize = sizeof(OPENFILENAME);
+                    OpenFile.hwndOwner = hWnd;
+                    OpenFile.hInstance = GetModuleHandle(0);
+                    OpenFile.lpstrFilter = TEXT("NES ROMs\0*.nes\0\0");
+                    OpenFile.lpstrFile = FileToOpen;
+                    OpenFile.nMaxFile = 256;
+                    OpenFile.Flags = OFN_FILEMUSTEXIST;
+                    OpenFile.lpstrDefExt = TEXT("nes");
+                    int a = GetOpenFileName(&OpenFile);
+                    if(LoadROM(OpenFile.lpstrFile))
+                    {
+                        Log("");
+                        WriteToLog("\tOpened ROM ");
+                        WriteToLog(OpenFile.lpstrFile);
+                        WriteToLog("\r\n");
+                    }
+                    break;
+                }
                 case ID_FILE_EXIT:
                 {
                     globals::Running = false;
@@ -401,23 +477,8 @@ int CALLBACK WinMain
     SetWindowLongPtr(GetHwnd(Window), GWLP_WNDPROC,
                      (LONG_PTR)(&MainWindowCallback));
     CheckMenuItem(GetMenu(GetHwnd(Window)), ID_REGION_PAL, MF_CHECKED);
-
-    //Initialise CPU
-    CPU::CurrentCycle = 0; //CYCLES START AT 0!!!!
-    CPU::P = 98;
-    CPU::A = 0;
-    CPU::X = 0;
-    CPU::Y = 3;
-    CPU::S = 0xfd;
-    CPU::PC = 0; //It should be equal to the bytes at FFFC-FFFD,
-                 //but we don't have that yet
-    CPU::InstructionCycle = 0;
-    CPU::CurrentCycle = 0;
     unsigned nOfFrames = 0;
-    globals::InternalMemory[0] = 0xbe;
-    globals::InternalMemory[1] = 0xfe;
-    globals::InternalMemory[2] = 0x00;
-    globals::InternalMemory[0x101] = 0xff;
+    timeBeginPeriod(1);
     while(globals::Running) //Every iteration of this loop is a frame
     {
         while(SDL_PollEvent(&e) != 0)
@@ -427,129 +488,35 @@ int CALLBACK WinMain
                 globals::Running = false;
             }
         }
-        //HERE LIETH THE CPU LOOP:
-        while(true)
+        
+        if(!IsAROMLoaded)
         {
-            
+            Sleep(33);
+        }
+        else
+        {
+            //HERE LIETH THE CPU LOOP:
+            while(true)
             {
-                char cycleInString[11];
-                UnsignedtoString(CPU::CurrentCycle, cycleInString);
-                WriteToLog("Cycle: ");
-                WriteToLog(cycleInString);
-                WriteToLog("\r\n");
+                if(CPU::CurrentCycle ==                                                        /*The frame is over,    */
+                   NTSC_CYCLE_COUNT+((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region))    /*we pass on to the next*/
+                {
+                    CPU::CurrentCycle -=
+                        (NTSC_CYCLE_COUNT+
+                         ((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region));
+                    break;
+                }
+                if(CPU::InstructionCycle == 0) //We fetch a new instruction
+                {
+                    CPU::CurrentInstruction = Memory::Read(CPU::PC);
+                    CPU::InstructionCycle++;
+                    CPU::CurrentCycle++;
+                    CPU::PC++;
+                    continue;
+                }
+                CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
+                CPU::CurrentCycle++; /*A new cycle starts*/
             }
-            {
-                char PCInString[11];
-                UnsignedtoString(CPU::PC, PCInString);
-                WriteToLog("PC: ");
-                WriteToLog(PCInString);
-                WriteToLog("\r\n");
-            }
-            {
-                char toLog1[] =
-                    {globals::ToHex[(Memory::AddressBus & 0b1111000000000000)
-                                    >> 12], 0};
-                char toLog2[] =
-                    {globals::ToHex[(Memory::AddressBus & 0b0000111100000000) >> 8],
-                     0};
-                char toLog3[] =
-                    {globals::ToHex[(Memory::AddressBus & 0b11110000) >> 4], 0};
-                char toLog4[] = {globals::ToHex[(Memory::AddressBus & 0b00001111)], 0};
-                WriteToLog("AddressBus: ");
-                WriteToLog(toLog1);
-                WriteToLog(toLog2);
-                WriteToLog(toLog3);
-                WriteToLog(toLog4);
-                WriteToLog("\r\n");
-            }
-            {
-                char toLog1[] = {globals::ToHex[(CPU::A & 0b11110000) >> 4], 0};
-                char toLog2[] = {globals::ToHex[(CPU::A & 0b00001111)], 0};
-                WriteToLog("A: ");
-                WriteToLog(toLog1);
-                WriteToLog(toLog2);
-                WriteToLog("\r\n");
-            }
-            {
-                char toLog1[] = {globals::ToHex[(CPU::X & 0b11110000) >> 4], 0};
-                char toLog2[] = {globals::ToHex[(CPU::X & 0b00001111)], 0};
-                WriteToLog("X: ");
-                WriteToLog(toLog1);
-                WriteToLog(toLog2);
-                WriteToLog("\r\n");
-            }
-            if(CPU::P & 128)
-            {
-                WriteToLog("Negative flag set.\r\n");
-            }
-            else
-            {
-                WriteToLog("Negative flag not set.\r\n");
-            }
-            if(CPU::P & 64)
-            {
-                WriteToLog("Overflow flag set.\r\n");
-            }
-            else
-            {
-                WriteToLog("Overflow flag not set.\r\n");
-            }
-            if(CPU::P & 8)
-            {
-                WriteToLog("Decimal flag set.\r\n");
-            }
-            else
-            {
-                WriteToLog("Decimal flag not set.\r\n");
-            }
-            if(CPU::P & 4)
-            {
-                WriteToLog("Interrupt flag set.\r\n");
-            }
-            else
-            {
-                WriteToLog("Interrupt flag not set.\r\n");
-            }
-            if(CPU::P & 2)
-            {
-                WriteToLog("Zero flag set.\r\n");
-            }
-            else
-            {
-                WriteToLog("Zero flag not set.\r\n");
-            }
-            if(CPU::P & 1)
-            {
-                WriteToLog("Carry flag set.\r\n");
-            }
-            else
-            {
-                WriteToLog("Carry flag not set.\r\n");
-            }
-            WriteToLog("\r\n");
-            //TODO: Test
-            if(CPU::CurrentCycle == 14)
-            {
-                goto quit;
-            }
-            if(CPU::CurrentCycle ==                                                        /*The frame is over,    */
-               NTSC_CYCLE_COUNT+((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region))    /*we pass on to the next*/
-            {
-                CPU::CurrentCycle -=
-                    (NTSC_CYCLE_COUNT+
-                     ((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region));
-                break;
-            }
-            if(CPU::InstructionCycle == 0) //We fetch a new instruction
-            {
-                CPU::CurrentInstruction = Memory::Read(CPU::PC);
-                CPU::InstructionCycle++;
-                CPU::CurrentCycle++;
-                CPU::PC++;
-                continue;
-            }
-            CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
-            CPU::CurrentCycle++; /*A new cycle starts*/
         }
         Screen = SDL_GetWindowSurface(Window);
         Render(Screen);
@@ -557,6 +524,7 @@ int CALLBACK WinMain
         nOfFrames++;
     }
 quit:
+    timeEndPeriod(1);
     char nOfFramesInString[11];
     UnsignedtoString(nOfFrames, nOfFramesInString);
     Log(nOfFramesInString);

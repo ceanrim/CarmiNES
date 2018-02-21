@@ -4,8 +4,8 @@
 //
 #define IDD_DIALOG1                     104
 #define IDR_MENU1                       106
-#define IDOK                            1001
-#define IDCANCEL                        1002
+#define _IDOK                           1001
+#define _IDCANCEL                       1002
 #define ID_FILE_OPEN                    40022
 #define ID_FILE_SAVESTATE               40023
 #define ID_FILE_LOADSTATE               40024

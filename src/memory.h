@@ -33,6 +33,8 @@ namespace Memory
                       unsigned char addrMode);
     extern unsigned char ConversionTable[]; //for xxxxxx00 instructions
     extern bool AddressCarry;
+    extern unsigned short Mapper;
+    extern unsigned short PRGROMSize;
 }
 
 #endif

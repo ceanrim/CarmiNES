@@ -16,5 +16,6 @@ namespace CPU
                            //0 if we've just completed one
     extern unsigned char CurrentInstruction; //The instruction we're running
     extern void RunCycle(unsigned char, unsigned char);
+    extern void Reset();
 }
 #endif

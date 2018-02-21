@@ -9,6 +9,8 @@
 #include "main.h"
 unsigned short Memory::AddressBus;
 unsigned short Memory::temp;
+unsigned short Memory::Mapper;
+unsigned short Memory::PRGROMSize;
 bool Memory::AddressCarry = false;
 unsigned char Memory::ConversionTable[] = {ADDR_IMMEDIATE, ADDR_ZERO_PAGE, 0,
                                            ADDR_ABSOLUTE, 0, ADDR_ZERO_PAGE_X,
@@ -22,6 +24,24 @@ unsigned char Memory::Read(unsigned short Address)
     if(Address < 0x2000)
     {
         return globals::InternalMemory[Address % 0x800];
+    }
+    if((Address >= 0x8000) && (Address < 0xC000))
+    {
+        return globals::CartridgeMemory[Address - 0x8000];
+    }
+    if(Address >= 0xC000)
+    {
+        if(Memory::Mapper == 0)
+        {
+            if(PRGROMSize == 16384)
+            {
+                return globals::CartridgeMemory[Address - 0xC000];
+            }
+            if(PRGROMSize == 32768)
+            {
+                return globals::CartridgeMemory[Address - 0x8000];
+            }
+        }
     }
 }
 void Memory::Read(unsigned short address,

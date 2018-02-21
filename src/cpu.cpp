@@ -408,4 +408,16 @@ namespace CPU
         }
         return; //TODO
     }
+    void Reset()
+    {
+        PC = Memory::Read(0xFFFC);
+        PC |= (((unsigned short)(Memory::Read(0xFFFD))) << 8);
+        CurrentCycle = 7;
+        InstructionCycle = 0;
+        P = 34;
+        A = 0;
+        X = 0;
+        Y = 0;
+        S = 0xfd;
+    }
 }
