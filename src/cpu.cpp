@@ -58,6 +58,34 @@ namespace CPU
                         P |= 8;
                         CPU::InstructionCycle = 0;
                     } break;
+                    case 0xA0: case 0xA4: case 0xAC: case 0xB4: case 0xBC: //LDY
+                    {
+                        unsigned char addrMode = Memory::ConversionTable
+                            [(((unsigned char)(FuncCurrentInstruction &
+                                               (unsigned char)0b00011100)) >> 2)];
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     addrMode,
+                                     &CPU::Y);
+                        if(CPU::InstructionCycle == 0)
+                        {
+                            if(CPU::Y & 128)
+                            {
+                                CPU::P |= 128;
+                            }
+                            else
+                            {
+                                CPU::P &= 127;
+                            }
+                            if(CPU::Y == 0)
+                            {
+                                CPU::P |= 2;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                        }
+                    }
                 }
             } break;
             case 1: //ORA AND EOR ADC STA LDA CMP SBC
