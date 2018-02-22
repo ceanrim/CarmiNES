@@ -467,6 +467,8 @@ int CALLBACK WinMain
         return 1;
     }
 
+    HICON ToolbarIcon = LoadIcon(hInstance, MAKEINTRESOURCE(TOOLBAR_ICON));
+    
     MainWindowCallback(GetHwnd(Window), WM_COMMAND, ID_SPEED_1X, 0);
     
     Screen = SDL_GetWindowSurface(Window);

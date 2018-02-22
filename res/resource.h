@@ -28,7 +28,7 @@
 #define ID_MISC_REGION                  40041
 #define ID_REGION_NTSC                  40042
 #define ID_REGION_PAL                   40043
-
+#define TOOLBAR_ICON                    2001
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
