@@ -181,24 +181,6 @@ void UnsignedtoString(unsigned number, char* string)
         string[1] = '\0';
     }
 }
-void Render(SDL_Surface *Surface)
-{
-    unsigned *Row = (unsigned *)Surface->pixels;
-    for(int y = 0;
-        y < Surface->h;
-        y++)
-    {
-        unsigned *Pixel = Row;
-        for(int x = 0;
-            x < Surface->w;
-            x++)
-        {
-            *Pixel = 0;
-            Pixel++;
-        }
-        Row += Surface->pitch / 4;
-    }
-}
 
 HWND GetHwnd(SDL_Window *Window)
 {
@@ -418,7 +400,7 @@ LRESULT CALLBACK MainWindowCallback
         }
         default:
         {
-            return CallWindowProc(globals::SDLWindowCallback, hWnd, uMsg, wParam, lParam);
+            return CallWindowProc(DefWindowProc, hWnd, uMsg, wParam, lParam);
         }
     }       
 }
@@ -459,77 +441,62 @@ int CALLBACK WinMain
     }
 
     Log("Allocated internal memory.");
-    
-    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
-    {
-        Log("Aborting. Couldn't initialize SDL.");
-        return 1;
-    }
 
-    Log("Initialized SDL.");
-    
-    SDL_Window  *Window = 0;
-    SDL_Surface *Screen = 0;
-    Window = SDL_CreateWindow("NESEmu17 by Carmine",
-                              SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED,
-                              640,
-                              480,
-                              SDL_WINDOW_RESIZABLE);
+    WNDCLASS WindowClass {};
+    WindowClass.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    WindowClass.lpfnWndProc   = MainWindowCallback;
+    WindowClass.cbClsExtra    = 0;
+    WindowClass.cbWndExtra    = 0;
+    WindowClass.hInstance     = hInstance;
+    WindowClass.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(TOOLBAR_ICON));
+    WindowClass.hCursor       = LoadCursor(hInstance, MAKEINTRESOURCE(IDC_ARROW));
+    WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+    WindowClass.lpszMenuName  = MAKEINTRESOURCE(IDR_MENU1);
+    WindowClass.lpszClassName = "CarmiNESWindowClass";
+    RegisterClass(&WindowClass);
+    HWND Window = CreateWindow("CarmiNESWindowClass",
+                               "CarmiNES",
+                               WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                               CW_USEDEFAULT,
+                               CW_USEDEFAULT,
+                               CW_USEDEFAULT,
+                               CW_USEDEFAULT,
+                               NULL,
+                               NULL,
+                               hInstance,
+                               NULL);
     if(!Window)
     {
+        int a = GetLastError();
         Log("Aborting. Couldn't create window.");
         return 1;
     }
 
     Log("Created window.");
-
-    HMENU Menu = LoadMenu(hInstance, MAKEINTRESOURCE(IDR_MENU1));
-    if(Menu)
-    {
-        Log("Loaded window menu.");
-        if(SetMenu(GetHwnd(Window), Menu))
-        {
-            Log("Set window menu.");
-        }
-        else
-        {
-            Log("Aborting. Couldn't set menu.");
-            return 1;
-        }
-    }
-    else
-    {
-        Log("Aborting. Couldn't load menu.");
-        return 1;
-    }
-
-    HICON ToolbarIcon = LoadIcon(hInstance, MAKEINTRESOURCE(TOOLBAR_ICON));
-    
-    MainWindowCallback(GetHwnd(Window), WM_COMMAND, ID_SPEED_1X, 0);
-    
-    Screen = SDL_GetWindowSurface(Window);
-    SDL_FillRect(Screen, 0, SDL_MapRGB(Screen->format, 0xFF, 0xFF, 0xFF));
-    SDL_UpdateWindowSurface(Window);
-    SDL_Event e;
-    globals::SDLWindowCallback = (WNDPROC)(GetWindowLongPtr(GetHwnd(Window), GWLP_WNDPROC));
-    SetWindowLongPtr(GetHwnd(Window), GWLP_WNDPROC,
-                     (LONG_PTR)(&MainWindowCallback));
-    CheckMenuItem(GetMenu(GetHwnd(Window)), ID_REGION_PAL, MF_CHECKED);
+      
+    CheckMenuItem(GetMenu(Window), ID_SPEED_1X, MF_CHECKED);
+    CheckMenuItem(GetMenu(Window), ID_REGION_PAL, MF_CHECKED);
     unsigned nOfFrames = 0;
-    timeBeginPeriod(1);
     while(globals::Running) //Every iteration of this loop is a frame
     {
-        while(SDL_PollEvent(&e) != 0)
+        MSG Message;
+        while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
-            if(e.type == SDL_QUIT)
+            if(Message.message == WM_QUIT)
             {
                 globals::Running = false;
+            }
+            else
+            {
+                TranslateMessage(&Message);
+                DispatchMessage(&Message);
             }
         }
         if(!IsAROMLoaded)
         {
+            timeBeginPeriod(1);
             Sleep(33);
+            timeEndPeriod(1);
         }
         else
         {
@@ -556,18 +523,13 @@ int CALLBACK WinMain
                 CPU::CurrentCycle++; /*A new cycle starts*/
             }
         }
-        Screen = SDL_GetWindowSurface(Window);
-        Render(Screen);
-        SDL_UpdateWindowSurface(Window);
         nOfFrames++;
     }
 quit:
-    timeEndPeriod(1);
     char nOfFramesInString[11];
     UnsignedtoString(nOfFrames, nOfFramesInString);
     Log(nOfFramesInString);
     Log("Quitting.");
-    SDL_Quit();
     CloseHandle(globals::LogFileHandle);
     return 0;
 }
