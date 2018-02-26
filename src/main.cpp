@@ -24,7 +24,7 @@ namespace globals
     const char ToHex[] = {'0', '1', '2', '3',
                          '4', '5', '6', '7',
                          '8', '9', 'a', 'b',
-                         'c', 'd', 'e', 'f'};
+                          'c', 'd', 'e', 'f'};
 }
 bool TimeString(char *Out) /*Outputs the system time as a string.
                             *Argument needs to be 9 bytes*/
@@ -135,12 +135,12 @@ bool CreateLogFile()
     LogName[18] = 't';
     LogName[19] =  0;
     globals::LogFileHandle = CreateFile(LogName,
-                               GENERIC_READ | GENERIC_WRITE,
-                               FILE_SHARE_READ | FILE_SHARE_WRITE,
-                               NULL,
-                               CREATE_NEW,
-                               FILE_ATTRIBUTE_NORMAL,
-                               NULL);
+                                        GENERIC_READ | GENERIC_WRITE,
+                                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                        NULL,
+                                        CREATE_NEW,
+                                        FILE_ATTRIBUTE_NORMAL,
+                                        NULL);
     if(globals::LogFileHandle == INVALID_HANDLE_VALUE)
     {
         return false;
@@ -250,7 +250,7 @@ bool LoadROM(char *path)
     if((Memory::PRGROMSize != 16384) && (Memory::PRGROMSize != 32768))
     {
         MessageBox(0, TEXT("Mapper 0 file of size different from 16k or 32k."),
-                           TEXT("Error"), MB_OK);
+                   TEXT("Error"), MB_OK);
         return false;
     }
     unsigned char *PRGROM = FileMemoryChar + 16;
@@ -259,6 +259,34 @@ bool LoadROM(char *path)
     IsAROMLoaded = true;
     CPU::Reset();
     return true;
+}
+
+LRESULT CALLBACK AboutDlgProc
+(HWND   hWnd,
+ UINT   uMsg,
+ WPARAM wParam,
+ LPARAM lParam)
+{
+    switch(uMsg)
+    {
+        case WM_INITDIALOG:
+        {
+            return TRUE;
+        }
+        case WM_COMMAND:
+        {
+            if((wParam & 65535) == IDOK)
+            {
+                EndDialog(hWnd, IDOK);
+                return TRUE;
+            }
+        }
+        default:
+        {
+            return FALSE;
+        }
+    }
+    return TRUE;
 }
 
 LRESULT CALLBACK MainWindowCallback
@@ -285,13 +313,15 @@ LRESULT CALLBACK MainWindowCallback
                     OpenFile.nMaxFile = 256;
                     OpenFile.Flags = OFN_FILEMUSTEXIST;
                     OpenFile.lpstrDefExt = TEXT("nes");
-                    int a = GetOpenFileName(&OpenFile);
-                    if(LoadROM(OpenFile.lpstrFile))
+                    if(GetOpenFileName(&OpenFile))
                     {
-                        Log("");
-                        WriteToLog("\tOpened ROM ");
-                        WriteToLog(OpenFile.lpstrFile);
-                        WriteToLog("\r\n");
+                        if(LoadROM(OpenFile.lpstrFile))
+                        {
+                            Log("");
+                            WriteToLog("\tOpened ROM ");
+                            WriteToLog(OpenFile.lpstrFile);
+                            WriteToLog("\r\n");
+                        }
                     }
                     break;
                 }
@@ -371,6 +401,13 @@ LRESULT CALLBACK MainWindowCallback
                         CheckMenuItem(GetMenu(hWnd), i, MF_UNCHECKED);
                     }
                     CheckMenuItem(GetMenu(hWnd), (wParam & 0xFFFF), MF_CHECKED);
+                    return 0;
+                }
+                case ID_ABOUT:
+                {
+                    DialogBox(GetModuleHandle(NULL),
+                              MAKEINTRESOURCE(IDD_ABOUT_DLG),
+                              hWnd, AboutDlgProc);
                     return 0;
                 }
                 default:
@@ -490,7 +527,6 @@ int CALLBACK WinMain
                 globals::Running = false;
             }
         }
-        
         if(!IsAROMLoaded)
         {
             Sleep(33);
