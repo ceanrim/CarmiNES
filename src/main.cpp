@@ -20,7 +20,14 @@ namespace globals
     HANDLE LogFileHandle = INVALID_HANDLE_VALUE;
     unsigned char *InternalMemory = NULL;
     unsigned char *CartridgeMemory = NULL;
-    WNDPROC SDLWindowCallback;
+    struct aaa
+    {
+        BITMAPINFO Info;
+        void *Memory;
+        int Width;
+        int Height;
+    };
+    aaa RenderBuffer {};
     const char ToHex[] = {'0', '1', '2', '3',
                          '4', '5', '6', '7',
                          '8', '9', 'a', 'b',
@@ -398,11 +405,38 @@ LRESULT CALLBACK MainWindowCallback
                 }
             }
         }
+        case WM_CLOSE:
+        case WM_DESTROY:
+        case WM_QUIT:
+        {
+            globals::Running = false;
+            return 0;
+            break;
+        }
         default:
         {
             return CallWindowProc(DefWindowProc, hWnd, uMsg, wParam, lParam);
         }
     }       
+}
+
+void TestRender()
+{
+    unsigned *Row = (unsigned *)globals::RenderBuffer.Memory;
+    for(int y = 0;
+        y < globals::RenderBuffer.Height;
+        y++)
+    {
+        unsigned *Pixel = (unsigned *)Row;
+        for(int x = 0;
+            x < globals::RenderBuffer.Width;
+            x++)
+        {
+            *Pixel = 0x00ff0000;
+            Pixel++;
+        }
+        Row += globals::RenderBuffer.Width;
+    }
 }
 
 int CALLBACK WinMain
@@ -418,7 +452,17 @@ int CALLBACK WinMain
     globals::LogFileHandle = INVALID_HANDLE_VALUE;
     globals::InternalMemory = NULL;
     globals::CartridgeMemory = NULL;
-
+    globals::RenderBuffer.Width                        = 1280;
+    globals::RenderBuffer.Height                       = 720;
+    globals::RenderBuffer.Info.bmiHeader.biSize        =
+        sizeof(globals::RenderBuffer.Info.bmiHeader);
+    globals::RenderBuffer.Info.bmiHeader.biWidth       = 1280;
+    globals::RenderBuffer.Info.bmiHeader.biHeight      = -720;
+    globals::RenderBuffer.Info.bmiHeader.biPlanes      = 1;
+    globals::RenderBuffer.Info.bmiHeader.biBitCount    = 32;
+    globals::RenderBuffer.Info.bmiHeader.biCompression = BI_RGB;
+    globals::RenderBuffer.Memory =
+        VirtualAlloc(0, 4 * 720 * 1280, MEM_COMMIT, PAGE_READWRITE);
     
     if(!CreateLogFile())
     {
@@ -449,7 +493,7 @@ int CALLBACK WinMain
     WindowClass.cbWndExtra    = 0;
     WindowClass.hInstance     = hInstance;
     WindowClass.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(TOOLBAR_ICON));
-    WindowClass.hCursor       = LoadCursor(hInstance, MAKEINTRESOURCE(IDC_ARROW));
+    WindowClass.hCursor       = LoadCursor(0, MAKEINTRESOURCE(IDC_ARROW));
     WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     WindowClass.lpszMenuName  = MAKEINTRESOURCE(IDR_MENU1);
     WindowClass.lpszClassName = "CarmiNESWindowClass";
@@ -473,24 +517,18 @@ int CALLBACK WinMain
     }
 
     Log("Created window.");
-      
+        
     CheckMenuItem(GetMenu(Window), ID_SPEED_1X, MF_CHECKED);
     CheckMenuItem(GetMenu(Window), ID_REGION_PAL, MF_CHECKED);
     unsigned nOfFrames = 0;
+    HDC DeviceContext = GetDC(Window);
     while(globals::Running) //Every iteration of this loop is a frame
     {
         MSG Message;
         while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
-            if(Message.message == WM_QUIT)
-            {
-                globals::Running = false;
-            }
-            else
-            {
-                TranslateMessage(&Message);
-                DispatchMessage(&Message);
-            }
+            TranslateMessage(&Message);
+            DispatchMessage(&Message);
         }
         if(!IsAROMLoaded)
         {
@@ -523,6 +561,17 @@ int CALLBACK WinMain
                 CPU::CurrentCycle++; /*A new cycle starts*/
             }
         }
+        TestRender();
+        RECT ClientRect;
+        GetClientRect(Window, &ClientRect);
+        StretchDIBits(DeviceContext,
+                      0, 0,
+                      ClientRect.right  - ClientRect.left,
+                      ClientRect.bottom - ClientRect.top,
+                      0, 0,
+                      globals::RenderBuffer.Width, globals::RenderBuffer.Height,
+                      globals::RenderBuffer.Memory, &globals::RenderBuffer.Info,
+                      DIB_RGB_COLORS, SRCCOPY);
         nOfFrames++;
     }
 quit:
