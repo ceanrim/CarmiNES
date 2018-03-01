@@ -6,8 +6,6 @@
    $Creator: Carmine Foggia $
    ======================================================================== */
 #include <windows.h>
-#include <SDL.h>
-#include <SDL_SysWM.h>
 #include "..\res\resource.h"
 #define MAIN_H
 #define PAL 1
@@ -22,6 +20,8 @@ namespace globals
     extern unsigned char *InternalMemory; //Memory addresses between 0x0000 and 0x07FF
     extern unsigned char *CartridgeMemory; //For now only mapper 0
     extern const char ToHex[]; //To convert easily from binary to hexadecimal
+    extern bool Debugger;
+    extern HWND DebuggerHandle;
 }
 
 #endif

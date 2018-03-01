@@ -44,6 +44,37 @@ unsigned char Memory::Read(unsigned short Address)
         }
     }
 }
+
+unsigned char Memory::ReadWithNoSideEffects(unsigned short Address)
+/*NES memory structure:
+  0x0000-0x07ff Internal Memory
+  0x0800-0x1fff Mirrors three times 0x0000-0x07ff
+  0x8000-0xffff Cartridge space
+  ...To be completed...*/
+{
+    if(Address < 0x2000)
+    {
+        return globals::InternalMemory[Address % 0x800];
+    }
+    if((Address >= 0x8000) && (Address < 0xC000))
+    {
+        return globals::CartridgeMemory[Address - 0x8000];
+    }
+    if(Address >= 0xC000)
+    {
+        if(Memory::Mapper == 0)
+        {
+            if(PRGROMSize == 16384)
+            {
+                return globals::CartridgeMemory[Address - 0xC000];
+            }
+            if(PRGROMSize == 32768)
+            {
+                return globals::CartridgeMemory[Address - 0x8000];
+            }
+        }
+    }
+}
 void Memory::Read(unsigned short address,
                   unsigned char* cycle,
                   unsigned char  addrMode,

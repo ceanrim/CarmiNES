@@ -15,13 +15,16 @@
 #define ADDR_ABSOLUTE_Y  0b00011000
 #define ADDR_ABSOLUTE_X  0b00011100
 #define ADDR_ZERO_PAGE_Y 0b00100000
+#define ADDR_IMPLIED     0b00100100
+#define ADDR_ACCUMULATOR 0b00101000
+#define ADDR_RELATIVE    0b00101100
 namespace Memory
 {
     extern unsigned short AddressBus; //To hold data between cycles
     extern unsigned short temp; //Need it for indexed indirect
     extern unsigned char Read(unsigned short); //Reads the memory
                                                //at the corresponding address
-    
+    extern unsigned char ReadWithNoSideEffects(unsigned short);
     extern void Read(unsigned short address,   //Processes addressing modes
                      unsigned char* cycle,     //in a cycle-accurate way
                      unsigned char  addrMode,

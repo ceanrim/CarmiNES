@@ -5,19 +5,18 @@
    $Creator: Carmine Foggia $
    ======================================================================== */
 #include <windows.h>
-#include <SDL.h>
-#include <SDL_SysWM.h>
 #include "..\res\resource.h"
 #include "main.h"
 #include "cpu.h"
 #include "memory.h"
-bool IsAROMLoaded = false;
 namespace globals
 {
     int Region = PAL;
     float Speed = 1;
     bool Running;
     HANDLE LogFileHandle = INVALID_HANDLE_VALUE;
+    HWND Window;
+    HDC MainWindowDC;
     unsigned char *InternalMemory = NULL;
     unsigned char *CartridgeMemory = NULL;
     struct aaa
@@ -29,9 +28,120 @@ namespace globals
     };
     aaa RenderBuffer {};
     const char ToHex[] = {'0', '1', '2', '3',
-                         '4', '5', '6', '7',
-                         '8', '9', 'a', 'b',
+                          '4', '5', '6', '7',
+                          '8', '9', 'a', 'b',
                           'c', 'd', 'e', 'f'};
+    const char *InstructionTable[] =
+    {"BRK", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO",
+     "PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL", "SLO",
+     "BPL", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO",
+     "CLC", "ORA", "NOP", "SLO", "NOP", "ORA", "ASL", "SLO",
+     "JSR", "AND", "KIL", "RLA", "BIT", "AND", "ROL", "RLA",
+     "PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL", "RLA",
+     "BMI", "AND", "KIL", "RLA", "NOP", "AND", "ROL", "RLA",
+     "SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL", "RLA",
+     "RTI", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE",
+     "PHA", "EOR", "LSR", "ASR", "JMP", "EOR", "LSR", "SRE",
+     "BVC", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE",
+     "CLI", "EOR", "NOP", "SRE", "NOP", "EOR", "LSR", "SRE",
+     "RTS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA",
+     "PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR", "RRA",
+     "BVS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA",
+     "SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR", "RRA",
+     "NOP", "STA", "NOP", "SAX", "STY", "STA", "STX", "SAX",
+     "DEY", "NOP", "TXA", "ANE", "STY", "STA", "STX", "SAX",
+     "BCC", "STA", "KIL", "SHA", "STY", "STA", "STX", "SAX",
+     "TYA", "STA", "TXS", "SHS", "SHY", "STA", "SHX", "SHA",
+     "LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX",
+     "TAY", "LDA", "TAX", "LXA", "LDY", "LDA", "LDX", "LAX",
+     "BCS", "LDA", "KIL", "LAX", "LDY", "LDA", "LDX", "LAX",
+     "CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX",
+     "CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP",
+     "INY", "CMP", "DEX", "SBX", "CPY", "CMP", "DEC", "DCP",
+     "BNE", "CMP", "KIL", "DCP", "NOP", "CMP", "DEC", "DCP",
+     "CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP",
+     "CPX", "SBC", "NOP", "ISB", "CPX", "SBC", "INC", "ISB",
+     "INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISB",
+     "BEQ", "SBC", "KIL", "ISB", "NOP", "SBC", "INC", "ISB",
+     "SED", "SBC", "NOP", "ISB", "NOP", "SBC", "INC", "ISB"};
+    const char InstrAddrModeTable[] =
+    {
+        ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
+        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+
+        ADDR_ABSOLUTE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
+        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+
+        ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
+        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+
+        ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
+        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+
+        ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
+        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+
+        ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
+        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+
+        ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
+        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+
+        ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
+        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X
+    };
+    bool Pause = false;
+    bool Debugger = false;
+    HWND DebuggerHandle = 0;
+    bool IsAROMLoaded = false;
 }
 bool TimeString(char *Out) /*Outputs the system time as a string.
                             *Argument needs to be 9 bytes*/
@@ -189,12 +299,26 @@ void UnsignedtoString(unsigned number, char* string)
     }
 }
 
-HWND GetHwnd(SDL_Window *Window)
+void UchartoHex(unsigned char number, char* string, bool NullTerminated)
 {
-    SDL_SysWMinfo WindowInfo;
-    SDL_VERSION(&WindowInfo.version);
-    SDL_GetWindowWMInfo(Window, &WindowInfo);
-    return WindowInfo.info.win.window;
+    string[0] = globals::ToHex[(number & 0b11110000) >> 4];
+    string[1] = globals::ToHex[number & 0b1111];
+    if(NullTerminated)
+    {
+        string[2] = 0;
+    }
+}
+
+void UshorttoHex(unsigned short number, char* string, bool NullTerminated)
+{
+    string[0] = globals::ToHex[(number & 0b1111000000000000) >> 12];
+    string[1] = globals::ToHex[(number & 0b111100000000) >> 8];
+    string[2] = globals::ToHex[(number & 0b11110000) >> 4];
+    string[3] = globals::ToHex[number & 0b1111];
+    if(NullTerminated)
+    {
+        string[4] = 0;
+    }
 }
 
 bool LoadROM(char *path)
@@ -245,7 +369,7 @@ bool LoadROM(char *path)
     unsigned char *PRGROM = FileMemoryChar + 16;
     memcpy(globals::CartridgeMemory, PRGROM, Memory::PRGROMSize);
     CloseHandle(FileHandle);
-    IsAROMLoaded = true;
+    globals::IsAROMLoaded = true;
     CPU::Reset();
     return true;
 }
@@ -276,6 +400,310 @@ LRESULT CALLBACK AboutDlgProc
         }
     }
     return TRUE;
+}
+
+void TestRender(int a)
+{
+    unsigned *Row = (unsigned *)globals::RenderBuffer.Memory;
+    for(int y = 0;
+        y < globals::RenderBuffer.Height;
+        y++)
+    {
+        unsigned *Pixel = (unsigned *)Row;
+        for(int x = 0;
+            x < globals::RenderBuffer.Width;
+            x++)
+        {
+            if(y < 100 & x < 100)
+            {
+                *Pixel = 0x0000ff00;
+            }
+            else
+            {
+                *Pixel = 0x00ff0000;
+            }
+            if(a == 1)
+            {
+                if(y > 620 & x > 980)
+                {
+                    *Pixel = 0x0000ff00;
+                }
+            }
+            Pixel++;
+        }
+        Row += globals::RenderBuffer.Width;
+    }
+}
+
+void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
+{
+    unsigned a = 0;
+    unsigned short b = CPU::PC;
+    char* string =
+        (char *)VirtualAlloc(0, 2048, MEM_COMMIT, PAGE_READWRITE);
+    memset((void *)string, 0, 2048);
+    for(int i = 0; i < 25; i++)
+    {
+        UshorttoHex(b, string+a, false);
+        string[a += 4] = ' ';
+        a++;
+        unsigned char Instruction = Memory::ReadWithNoSideEffects(b);
+        void const *InstructionString =
+            (void const *)globals::InstructionTable[Instruction];
+        memcpy((void *)&(string[a]), InstructionString, 4);
+        a += 3;
+        switch(globals::InstrAddrModeTable[Instruction])
+        {
+            case ADDR_IMPLIED:
+            {
+                string[a] = '\n';
+                a++;
+                b++;
+                break;
+            }
+            case ADDR_IMMEDIATE:
+            {
+                string[a] = ' ';
+                a++;
+                string[a] = '#';
+                a++;
+                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                a+=2;
+                string[a] = '\n';
+                a++;
+                b+=2;
+                break;
+            }
+            case ADDR_ZERO_PAGE:
+            {
+                string[a] = ' ';
+                a++;
+                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                a+=2;
+                string[a] = '\n';
+                a++;
+                b+=2;
+                break;
+            }
+            case ADDR_ZERO_PAGE_X:
+            {
+                string[a] = ' ';
+                a++;
+                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                a+=2;
+                string[a] = '+';
+                a++;
+                string[a] = 'X';
+                a++;
+                string[a] = '\n';
+                a++;
+                b+=2;
+                break;
+            }
+            case ADDR_ZERO_PAGE_Y:
+            {
+                string[a] = ' ';
+                a++;
+                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                a+=2;
+                string[a] = '+';
+                a++;
+                string[a] = 'Y';
+                a++;
+                string[a] = '\n';
+                a++;
+                b+=2;
+                break;
+            }
+            case ADDR_ABSOLUTE:
+            {
+                string[a] = ' ';
+                a++;
+                unsigned short c = Memory::ReadWithNoSideEffects(b+1);
+                c |= (Memory::ReadWithNoSideEffects(b+2) << 8);
+                UshorttoHex(c, string+a, false);
+                a += 4;
+                string[a] = '\n';
+                a++;
+                b+=3;
+                break;
+            }
+            case ADDR_ABSOLUTE_X:
+            {
+                string[a] = ' ';
+                a++;
+                unsigned short c = Memory::ReadWithNoSideEffects(b+1);
+                c |= (Memory::ReadWithNoSideEffects(b+2) << 8);
+                UshorttoHex(c, string+a, false);
+                a += 4;
+                string[a] = '+';
+                a++;
+                string[a] = 'X';
+                a++;
+                string[a] = '\n';
+                a++;
+                b+=3;
+                break;
+            }
+            case ADDR_ABSOLUTE_Y:
+            {
+                string[a] = ' ';
+                a++;
+                unsigned short c = Memory::ReadWithNoSideEffects(b+1);
+                c |= (Memory::ReadWithNoSideEffects(b+2) << 8);
+                UshorttoHex(c, string+a, false);
+                a += 4;
+                string[a] = '+';
+                a++;
+                string[a] = 'Y';
+                a++;
+                string[a] = '\n';
+                a++;
+                b+=3;
+                break;
+            }
+            case ADDR_INDIRECT_X:
+            {
+                string[a] = ' ';
+                a++;
+                string[a] = '(';
+                a++;
+                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                a += 2;
+                string[a] = '+';
+                a++;
+                string[a] = 'X';
+                a++;
+                string[a] = ')';
+                a++;
+                string[a] = '\n';
+                a++;
+                b+=2;
+                break;
+            }
+            case ADDR_INDIRECT_Y:
+            {
+                string[a] = ' ';
+                a++;
+                string[a] = '(';
+                a++;
+                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                a += 2;
+                string[a] = ')';
+                a++;
+                string[a] = '+';
+                a++;
+                string[a] = 'Y';
+                a++;
+                string[a] = '\n';
+                a++;
+                b+=2;
+                break;
+            }
+            case ADDR_ACCUMULATOR:
+            {
+                string[a] = ' ';
+                a++;
+                string[a] = 'A';
+                a++;
+                string[a] = '\n';
+                a++;
+                break;
+            }
+            case ADDR_RELATIVE: //TODO
+            {
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
+    }
+    SetDlgItemText(hWnd, Control, string);
+    VirtualFree(string, 2048, MEM_RELEASE);
+}
+
+LRESULT CALLBACK DebuggerProc
+(HWND   hWnd,
+ UINT   uMsg,
+ WPARAM wParam,
+ LPARAM lParam)
+{
+    switch(uMsg)
+    {
+        case WM_INITDIALOG:
+        {
+            HICON ArrowUpIcon = (HICON)LoadImage(GetModuleHandle(0),
+                                                 MAKEINTRESOURCE(ARROWUP_ICON),
+                                                 IMAGE_ICON, 15, 14,
+                                                 LR_DEFAULTCOLOR);
+            HICON ArrowDownIcon = (HICON)LoadImage(GetModuleHandle(0),
+                                                   MAKEINTRESOURCE(ARROWDN_ICON),
+                                                   IMAGE_ICON, 15, 14,
+                                                   LR_DEFAULTCOLOR);
+            SendDlgItemMessage(hWnd, IDC_ARROWUP,
+                               BM_SETIMAGE, IMAGE_ICON, (LPARAM)ArrowUpIcon);
+            SendDlgItemMessage(hWnd, IDC_ARROWDOWN,
+                               BM_SETIMAGE, IMAGE_ICON, (LPARAM)ArrowDownIcon);
+            ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
+            return TRUE;
+        }
+        case WM_CLOSE:
+        case WM_DESTROY:
+        {
+            DestroyWindow(hWnd);
+            globals::DebuggerHandle = 0;
+            globals::Debugger = false;
+            return TRUE;
+        }
+        case WM_COMMAND:
+        {
+            switch(wParam & 0xFFFF)
+            {
+                case IDC_CYCLE:
+                {
+                    if(CPU::InstructionCycle == 0) //We fetch a new instruction
+                    {
+                        CPU::CurrentInstruction = Memory::Read(CPU::PC);
+                        CPU::InstructionCycle++;
+                        CPU::CurrentCycle++;
+                        ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
+                        CPU::PC++;
+                        break;
+                    }
+                    CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
+                    CPU::CurrentCycle++;
+                    break;
+                }
+                case IDC_INSTRUCTION:
+                {
+                    do
+                    {
+                        if(CPU::InstructionCycle == 0) //We fetch a new instruction
+                        {
+                            CPU::CurrentInstruction = Memory::Read(CPU::PC);
+                            CPU::InstructionCycle++;
+                            CPU::CurrentCycle++;
+                            ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
+                            CPU::PC++;
+                        }
+                        CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
+                        CPU::CurrentCycle++;
+                    } while(CPU::InstructionCycle != 0);
+                    break;
+                }
+                default:
+                {
+                    return FALSE;
+                }
+            }
+        }
+        default:
+        {
+            return FALSE;
+        }
+    }
 }
 
 LRESULT CALLBACK MainWindowCallback
@@ -399,11 +827,40 @@ LRESULT CALLBACK MainWindowCallback
                               hWnd, AboutDlgProc);
                     return 0;
                 }
+                case ID_EMULATOR_PAUSE:
+                {
+                    globals::Pause = !globals::Pause;
+                    CheckMenuItem(GetMenu(hWnd), ID_EMULATOR_PAUSE,
+                                  globals::Pause?MF_CHECKED:MF_UNCHECKED);
+                    return 0;
+                }
+                case ID_EMULATOR_RESET:
+                {
+                    CPU::Reset();
+                    break;
+                }
+                case ID_TOOLS_DEBUGGER:
+                {
+                    if(!globals::Debugger)
+                    {
+                        globals::DebuggerHandle =
+                            CreateDialog(GetModuleHandle(NULL),
+                                         MAKEINTRESOURCE(IDD_DEBUGGER),
+                                         hWnd, DebuggerProc);
+                        if(globals::DebuggerHandle)
+                        {
+                            ShowWindow(globals::DebuggerHandle, SW_SHOW);
+                            globals::Debugger = true;
+                        }
+                    }
+                    return 0;
+                }
                 default:
                 {
                     return 0;
                 }
             }
+            break;
         }
         case WM_CLOSE:
         case WM_DESTROY:
@@ -413,30 +870,27 @@ LRESULT CALLBACK MainWindowCallback
             return 0;
             break;
         }
+        case WM_PAINT:
+        {
+            TestRender(globals::Debugger);
+            RECT ClientRect;
+            GetClientRect(globals::Window, &ClientRect);
+            StretchDIBits(globals::MainWindowDC,
+                          0, 0,
+                          ClientRect.right  - ClientRect.left,
+                          ClientRect.bottom - ClientRect.top,
+                          0, 0,
+                          globals::RenderBuffer.Width, globals::RenderBuffer.Height,
+                          globals::RenderBuffer.Memory, &globals::RenderBuffer.Info,
+                          DIB_RGB_COLORS, SRCCOPY);
+            return DefWindowProc(hWnd, uMsg, wParam, lParam);
+            break;
+        }
         default:
         {
             return CallWindowProc(DefWindowProc, hWnd, uMsg, wParam, lParam);
         }
     }       
-}
-
-void TestRender()
-{
-    unsigned *Row = (unsigned *)globals::RenderBuffer.Memory;
-    for(int y = 0;
-        y < globals::RenderBuffer.Height;
-        y++)
-    {
-        unsigned *Pixel = (unsigned *)Row;
-        for(int x = 0;
-            x < globals::RenderBuffer.Width;
-            x++)
-        {
-            *Pixel = 0x00ff0000;
-            Pixel++;
-        }
-        Row += globals::RenderBuffer.Width;
-    }
 }
 
 int CALLBACK WinMain
@@ -498,7 +952,7 @@ int CALLBACK WinMain
     WindowClass.lpszMenuName  = MAKEINTRESOURCE(IDR_MENU1);
     WindowClass.lpszClassName = "CarmiNESWindowClass";
     RegisterClass(&WindowClass);
-    HWND Window = CreateWindow("CarmiNESWindowClass",
+    globals::Window = CreateWindow("CarmiNESWindowClass",
                                "CarmiNES",
                                WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                                CW_USEDEFAULT,
@@ -509,7 +963,7 @@ int CALLBACK WinMain
                                NULL,
                                hInstance,
                                NULL);
-    if(!Window)
+    if(!globals::Window)
     {
         int a = GetLastError();
         Log("Aborting. Couldn't create window.");
@@ -518,19 +972,30 @@ int CALLBACK WinMain
 
     Log("Created window.");
         
-    CheckMenuItem(GetMenu(Window), ID_SPEED_1X, MF_CHECKED);
-    CheckMenuItem(GetMenu(Window), ID_REGION_PAL, MF_CHECKED);
+    CheckMenuItem(GetMenu(globals::Window), ID_SPEED_1X, MF_CHECKED);
+    CheckMenuItem(GetMenu(globals::Window), ID_REGION_PAL, MF_CHECKED);
     unsigned nOfFrames = 0;
-    HDC DeviceContext = GetDC(Window);
+    globals::MainWindowDC = GetDC(globals::Window);
     while(globals::Running) //Every iteration of this loop is a frame
     {
         MSG Message;
         while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
-            TranslateMessage(&Message);
-            DispatchMessage(&Message);
+            if(globals::DebuggerHandle != 0)
+            {
+                if(!IsDialogMessage(globals::DebuggerHandle, &Message))
+                {
+                    TranslateMessage(&Message);
+                    DispatchMessage(&Message);
+                }
+            }
+            else
+            {
+                TranslateMessage(&Message);
+                DispatchMessage(&Message);
+            }
         }
-        if(!IsAROMLoaded)
+        if(globals::Pause || !globals::IsAROMLoaded || globals::Debugger)
         {
             timeBeginPeriod(1);
             Sleep(33);
@@ -561,10 +1026,10 @@ int CALLBACK WinMain
                 CPU::CurrentCycle++; /*A new cycle starts*/
             }
         }
-        TestRender();
+        TestRender(globals::Debugger?1:0);
         RECT ClientRect;
-        GetClientRect(Window, &ClientRect);
-        StretchDIBits(DeviceContext,
+        GetClientRect(globals::Window, &ClientRect);
+        StretchDIBits(globals::MainWindowDC,
                       0, 0,
                       ClientRect.right  - ClientRect.left,
                       ClientRect.bottom - ClientRect.top,

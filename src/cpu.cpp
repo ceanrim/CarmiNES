@@ -86,6 +86,11 @@ namespace CPU
                             }
                         }
                     }
+                    default:
+                    {
+                        CPU::InstructionCycle = 0;
+                        break;
+                    }
                 }
             } break;
             case 1: //ORA AND EOR ADC STA LDA CMP SBC
