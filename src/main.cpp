@@ -143,6 +143,10 @@ namespace globals
     HWND DebuggerHandle = 0;
     bool IsAROMLoaded = false;
 }
+namespace Debugger
+{
+    unsigned short CurrentMemoryAddress = 0;
+}
 bool TimeString(char *Out) /*Outputs the system time as a string.
                             *Argument needs to be 9 bytes*/
 {
@@ -299,6 +303,46 @@ void UnsignedtoString(unsigned number, char* string)
     }
 }
 
+void toUpper(char *string, int length)
+{
+    char Letters[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
+                      'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
+                      's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
+    for(int i = 0; i < length; i++)
+    {
+        for(int j = 0; j < 26; j++)
+        {
+            if(string[i] == Letters[j])
+            {
+                string[i] -= 32;
+            }
+        }
+    }
+}
+
+bool isValidHex(char *string, int length)
+{
+    bool isValid = false;
+    char ValidHexChars[] = {'A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4',
+                          '5', '6', '7', '8', '9'};
+    for(int i = 0; i < length; i++)
+    {
+        isValid = false;
+        for(int j = 0; j < 16; j++)
+        {
+            if(string[i] == ValidHexChars[j])
+            {
+                isValid = true;
+            }
+        }
+        if(!isValid)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void UchartoHex(unsigned char number, char* string, bool NullTerminated)
 {
     string[0] = globals::ToHex[(number & 0b11110000) >> 4];
@@ -319,6 +363,16 @@ void UshorttoHex(unsigned short number, char* string, bool NullTerminated)
     {
         string[4] = 0;
     }
+}
+
+unsigned short HextoUshort(char *string)
+{
+    unsigned short retVal = 0;
+    retVal |= ((string[0] >= 'A')?string[0]-55:string[0]-48) << 12;    
+    retVal |= ((string[1] >= 'A')?string[1]-55:string[1]-48) << 8;    
+    retVal |= ((string[2] >= 'A')?string[2]-55:string[2]-48) << 4;    
+    retVal |= ((string[3] >= 'A')?string[3]-55:string[3]-48);
+    return retVal;
 }
 
 bool LoadROM(char *path)
@@ -612,6 +666,9 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             }
             case ADDR_RELATIVE: //TODO
             {
+                string[a] = '\n';
+                a++;
+                b++;
                 break;
             }
             default:
@@ -622,6 +679,56 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
     }
     SetDlgItemText(hWnd, Control, string);
     VirtualFree(string, 2048, MEM_RELEASE);
+}
+
+void ShowMemory(HWND hWnd, int Control, unsigned short Address)
+{
+    char* string;
+    string = (char *)VirtualAlloc(0, 2048, MEM_COMMIT, PAGE_READWRITE);
+    memset((void *)string, 0, 2048);
+    int k = 0;
+    for(int j = 0; j < 25; j++)
+    {
+        UshorttoHex(Address, string+k, false);
+        k += 4;
+        for(int i = 0; i < 16; i++)
+        {
+            string[k] = ' ';
+            k++;
+            UchartoHex(Memory::ReadWithNoSideEffects(Address+i), string+k, false);
+            k += 2;
+        }
+        string[k] = '\r';
+        string[k+1] = '\n';
+        k += 2;
+        Address += 16;
+    }
+    SetDlgItemText(hWnd, Control, string);
+    VirtualFree(string, 2048, MEM_RELEASE);
+}
+
+void ShowRegisters(HWND hWnd, int AControl, int XControl, int YControl,
+                   int SControl, int PControl)
+{
+    char string[6];
+    memset((void*)string, 0, 6);
+    string[0] = 'A';
+    string[1] = ':';
+    string[2] = ' ';
+    UchartoHex(CPU::A, string+3, false);
+    SetDlgItemText(hWnd, AControl, string);
+    string[0] = 'X';
+    UchartoHex(CPU::X, string+3, false);
+    SetDlgItemText(hWnd, XControl, string);
+    string[0] = 'Y';
+    UchartoHex(CPU::Y, string+3, false);
+    SetDlgItemText(hWnd, YControl, string);
+    string[0] = 'S';
+    UchartoHex(CPU::S, string+3, false);
+    SetDlgItemText(hWnd, SControl, string);
+    string[0] = 'P';
+    UchartoHex(CPU::P, string+3, false);
+    SetDlgItemText(hWnd, PControl, string);
 }
 
 LRESULT CALLBACK DebuggerProc
@@ -661,6 +768,40 @@ LRESULT CALLBACK DebuggerProc
         {
             switch(wParam & 0xFFFF)
             {
+                case IDC_ARROWUP:
+                {
+                    Debugger::CurrentMemoryAddress -= 16;
+                    ShowMemory(hWnd, ID_STATIC_MEMORY,
+                               Debugger::CurrentMemoryAddress);
+                    ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
+                                  ID_STATIC_S, ID_STATIC_P);
+                    break;
+                }
+                case IDC_ARROWDOWN:
+                {
+                    Debugger::CurrentMemoryAddress += 16;
+                    ShowMemory(hWnd, ID_STATIC_MEMORY,
+                               Debugger::CurrentMemoryAddress);
+                    ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
+                                  ID_STATIC_S, ID_STATIC_P);
+                    break;
+                }
+                case IDC_REFRESH:
+                {
+                    ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
+                    char EditText[5];
+                    GetDlgItemText(hWnd, IDC_EDIT1, EditText, 5);
+                    toUpper(EditText, 4);
+                    if(isValidHex(EditText, 4))
+                    {
+                        Debugger::CurrentMemoryAddress = HextoUshort(EditText);
+                    }
+                    ShowMemory(hWnd, ID_STATIC_MEMORY,
+                               Debugger::CurrentMemoryAddress);
+                    ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
+                                  ID_STATIC_S, ID_STATIC_P);
+                    break;
+                }
                 case IDC_CYCLE:
                 {
                     if(CPU::InstructionCycle == 0) //We fetch a new instruction
@@ -670,10 +811,20 @@ LRESULT CALLBACK DebuggerProc
                         CPU::CurrentCycle++;
                         ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
                         CPU::PC++;
-                        break;
                     }
                     CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
                     CPU::CurrentCycle++;
+                    char EditText[5];
+                    GetDlgItemText(hWnd, IDC_EDIT1, EditText, 5);
+                    toUpper(EditText, 4);
+                    if(isValidHex(EditText, 4))
+                    {
+                        Debugger::CurrentMemoryAddress = HextoUshort(EditText);
+                    }
+                    ShowMemory(hWnd, ID_STATIC_MEMORY,
+                               Debugger::CurrentMemoryAddress);
+                    ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
+                                  ID_STATIC_S, ID_STATIC_P);
                     break;
                 }
                 case IDC_INSTRUCTION:
@@ -691,6 +842,17 @@ LRESULT CALLBACK DebuggerProc
                         CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
                         CPU::CurrentCycle++;
                     } while(CPU::InstructionCycle != 0);
+                    char EditText[5];
+                    GetDlgItemText(hWnd, IDC_EDIT1, EditText, 5);
+                    toUpper(EditText, 4);
+                    if(isValidHex(EditText, 4))
+                    {
+                        Debugger::CurrentMemoryAddress = HextoUshort(EditText);
+                    }
+                    ShowMemory(hWnd, ID_STATIC_MEMORY,
+                               Debugger::CurrentMemoryAddress);
+                    ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
+                                  ID_STATIC_S, ID_STATIC_P);
                     break;
                 }
                 default:
