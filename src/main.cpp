@@ -96,7 +96,7 @@ namespace globals
         ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
         ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
         ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
-        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+        ADDR_ABSOLUTE_IND, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
         ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
         ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
         ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
@@ -116,9 +116,9 @@ namespace globals
         ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
         ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
         ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
-        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_Y, ADDR_ZERO_PAGE_X,
         ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
-        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_Y, ADDR_ABSOLUTE_X,
 
         ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
         ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
@@ -324,7 +324,7 @@ bool isValidHex(char *string, int length)
 {
     bool isValid = false;
     char ValidHexChars[] = {'A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4',
-                          '5', '6', '7', '8', '9'};
+                            '5', '6', '7', '8', '9'};
     for(int i = 0; i < length; i++)
     {
         isValid = false;
@@ -582,6 +582,23 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 b+=3;
                 break;
             }
+            case ADDR_ABSOLUTE_IND:
+            {
+                string[a] = ' ';
+                a++;
+                string[a] = '(';
+                a++;
+                unsigned short c = Memory::ReadWithNoSideEffects(b+1);
+                c |= (Memory::ReadWithNoSideEffects(b+2) << 8);
+                UshorttoHex(c, string+a, false);
+                a+=4;
+                string[a] = ')';
+                a++;
+                string[a] = '\n';
+                a++;
+                b+=3;
+                break;
+            }
             case ADDR_ABSOLUTE_X:
             {
                 string[a] = ' ';
@@ -812,14 +829,10 @@ LRESULT CALLBACK DebuggerProc
                         ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
                         CPU::PC++;
                     }
-                    CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
-                    CPU::CurrentCycle++;
-                    char EditText[5];
-                    GetDlgItemText(hWnd, IDC_EDIT1, EditText, 5);
-                    toUpper(EditText, 4);
-                    if(isValidHex(EditText, 4))
+                    else
                     {
-                        Debugger::CurrentMemoryAddress = HextoUshort(EditText);
+                        CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
+                        CPU::CurrentCycle++;
                     }
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
                                Debugger::CurrentMemoryAddress);
@@ -839,16 +852,12 @@ LRESULT CALLBACK DebuggerProc
                             ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
                             CPU::PC++;
                         }
-                        CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
-                        CPU::CurrentCycle++;
+                        else
+                        {
+                            CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
+                            CPU::CurrentCycle++;
+                        }
                     } while(CPU::InstructionCycle != 0);
-                    char EditText[5];
-                    GetDlgItemText(hWnd, IDC_EDIT1, EditText, 5);
-                    toUpper(EditText, 4);
-                    if(isValidHex(EditText, 4))
-                    {
-                        Debugger::CurrentMemoryAddress = HextoUshort(EditText);
-                    }
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
                                Debugger::CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,

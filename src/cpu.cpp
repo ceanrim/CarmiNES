@@ -86,6 +86,50 @@ namespace CPU
                             }
                         }
                     }
+                    case 0x4C: //JMP XXXX
+                    {
+                        if(CPU::InstructionCycle == 1)
+                        {
+                            Memory::AddressBus = Memory::Read(PC);
+                            CPU::PC++;
+                            CPU::InstructionCycle++;
+                        }
+                        else if(CPU::InstructionCycle == 2)
+                        {
+                            Memory::AddressBus |= (Memory::Read(PC) << 8);
+                            CPU::PC = Memory::AddressBus;
+                            CPU::InstructionCycle = 0;
+                        }
+                        break;
+                    }
+                    case 0x6C: //JMP (XXXX)
+                    {
+                        if(CPU::InstructionCycle == 1)
+                        {
+                            Memory::AddressBus = Memory::Read(PC);
+                            PC++;
+                            InstructionCycle++;
+                        }
+                        else if(CPU::InstructionCycle == 2)
+                        {
+                            Memory::AddressBus |= (Memory::Read(PC) << 8);
+                            InstructionCycle++;
+                        }
+                        else if(CPU::InstructionCycle == 3)
+                        {
+                            Memory::temp = Memory::AddressBus;
+                            Memory::AddressBus &= Memory::Read(Memory::temp);
+                            InstructionCycle++;
+                        }
+                        else if(CPU::InstructionCycle == 4)
+                        {
+                            Memory::AddressBus |=
+                                (Memory::Read(Memory::temp+1) << 8);
+                            PC = Memory::AddressBus;
+                            InstructionCycle = 0;
+                        }
+                        break;
+                    }
                     default:
                     {
                         CPU::InstructionCycle = 0;
@@ -447,7 +491,7 @@ namespace CPU
         PC |= (((unsigned short)(Memory::Read(0xFFFD))) << 8);
         CurrentCycle = 7;
         InstructionCycle = 0;
-        P = 34;
+        P = 0x34;
         A = 0;
         X = 0;
         Y = 0;

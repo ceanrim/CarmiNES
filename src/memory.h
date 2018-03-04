@@ -6,18 +6,19 @@
    $Creator: Carmine Foggia $
    ======================================================================== */
 #define MEMORY_H
-#define ADDR_INDIRECT_X  0b00000000
-#define ADDR_ZERO_PAGE   0b00000100
-#define ADDR_IMMEDIATE   0b00001000
-#define ADDR_ABSOLUTE    0b00001100
-#define ADDR_INDIRECT_Y  0b00010000
-#define ADDR_ZERO_PAGE_X 0b00010100
-#define ADDR_ABSOLUTE_Y  0b00011000
-#define ADDR_ABSOLUTE_X  0b00011100
-#define ADDR_ZERO_PAGE_Y 0b00100000
-#define ADDR_IMPLIED     0b00100100
-#define ADDR_ACCUMULATOR 0b00101000
-#define ADDR_RELATIVE    0b00101100
+#define ADDR_INDIRECT_X   0b00000000
+#define ADDR_ZERO_PAGE    0b00000100
+#define ADDR_IMMEDIATE    0b00001000
+#define ADDR_ABSOLUTE     0b00001100
+#define ADDR_INDIRECT_Y   0b00010000
+#define ADDR_ZERO_PAGE_X  0b00010100
+#define ADDR_ABSOLUTE_Y   0b00011000
+#define ADDR_ABSOLUTE_X   0b00011100
+#define ADDR_ZERO_PAGE_Y  0b00100000
+#define ADDR_IMPLIED      0b00100100
+#define ADDR_ACCUMULATOR  0b00101000
+#define ADDR_RELATIVE     0b00101100
+#define ADDR_ABSOLUTE_IND 0b00110000
 namespace Memory
 {
     extern unsigned short AddressBus; //To hold data between cycles
