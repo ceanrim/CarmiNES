@@ -86,8 +86,8 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -102,8 +102,8 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -126,8 +126,8 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -148,24 +148,24 @@ void Memory::Read(unsigned short address,
         }
         case ADDR_IMMEDIATE:
         {
-            *valueToRewrite = Memory::Read(CPU::PC);
+            *valueToRewrite = Memory::Read(CPU::PCTemp);
             CPU::InstructionCycle = 0;
-            CPU::PC++;
+            CPU::PCTemp++;
             break;
         }
         case ADDR_ABSOLUTE:
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PC) << 8);
-                CPU::PC++;
+                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -180,14 +180,14 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PC) << 8);
+                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
                 if((AddressBus >> 8) != ((AddressBus+CPU::X) >> 8))
                 {
                     AddressCarry = true; //Crossing pages takes one clock cycle
@@ -197,7 +197,7 @@ void Memory::Read(unsigned short address,
                     AddressCarry = false;
                 }
                 AddressBus += CPU::X;
-                CPU::PC++;
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -224,14 +224,14 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PC) << 8);
+                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
                 if((AddressBus >> 8) != ((AddressBus+CPU::Y) >> 8))
                 {
                     AddressCarry = true; //Crossing pages takes one clock cycle
@@ -241,7 +241,7 @@ void Memory::Read(unsigned short address,
                     AddressCarry = false;
                 }
                 AddressBus += CPU::Y;
-                CPU::PC++;
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -268,8 +268,8 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -305,8 +305,8 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -361,6 +361,24 @@ void Memory::Write(unsigned short address,
     {
         globals::InternalMemory[address % 0x800] = valueToWrite;
     }
+    if((address >= 0x8000) && (address < 0xC000))
+    {
+        globals::CartridgeMemory[address - 0x8000] = valueToWrite;
+    }
+    if(address >= 0xC000)
+    {
+        if(Memory::Mapper == 0)
+        {
+            if(PRGROMSize == 16384)
+            {
+                globals::CartridgeMemory[address - 0xC000] = valueToWrite;
+            }
+            if(PRGROMSize == 32768)
+            {
+                globals::CartridgeMemory[address - 0x8000] = valueToWrite;
+            }
+        }
+    }
 }
 void Memory::Write(unsigned char valueToWrite,
                    unsigned char* cycle,
@@ -375,8 +393,8 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -391,8 +409,8 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -415,15 +433,15 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PC) << 8);
-                CPU::PC++;
+                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -438,16 +456,16 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PC) << 8);
+                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
                 AddressBus += CPU::X;
-                CPU::PC++;
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -468,16 +486,16 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PC) << 8);
+                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
                 AddressBus += CPU::Y;
-                CPU::PC++;
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -498,8 +516,8 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -535,8 +553,8 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PC);
-                CPU::PC++;
+                AddressBus = Memory::Read(CPU::PCTemp);
+                CPU::PCTemp++;
                 (*cycle)++;
                 break;
             }

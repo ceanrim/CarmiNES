@@ -823,11 +823,12 @@ LRESULT CALLBACK DebuggerProc
                 {
                     if(CPU::InstructionCycle == 0)
                     {
-                        CPU::CurrentInstruction = Memory::Read(CPU::PC);
+                        CPU::PC = CPU::PCTemp;
+                        CPU::CurrentInstruction = Memory::Read(CPU::PCTemp);
                         CPU::InstructionCycle++;
                         CPU::CurrentCycle++;
                         ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
-                        CPU::PC++;
+                        CPU::PCTemp++;
                     }
                     else
                     {
@@ -846,11 +847,12 @@ LRESULT CALLBACK DebuggerProc
                     {
                         if(CPU::InstructionCycle == 0)
                         {
-                            CPU::CurrentInstruction = Memory::Read(CPU::PC);
+                            CPU::PC = CPU::PCTemp;
+                            CPU::CurrentInstruction = Memory::Read(CPU::PCTemp);
                             CPU::InstructionCycle++;
                             CPU::CurrentCycle++;
                             ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
-                            CPU::PC++;
+                            CPU::PCTemp++;
                         }
                         else
                         {
