@@ -205,6 +205,16 @@ namespace CPU
                         CPU::InstructionCycle = 0;
                         break;
                     }
+                    case 0x84: //STY xx
+                    case 0x8C: //STY xxxx
+                    case 0x94: //STY xx+X
+                    {
+                        unsigned char addrMode = Memory::ConversionTable
+                            [(((unsigned char)(FuncCurrentInstruction &
+                                               (unsigned char) 0b00011100)) >> 2)];
+                        Memory::Write(CPU::Y, &CPU::InstructionCycle, addrMode);
+                        break;
+                    }
                 }
             } break;
             case 1: //ORA AND EOR ADC STA LDA CMP SBC
