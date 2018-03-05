@@ -1,2 +1,3 @@
 rc "..\res\NES Emulator 2017 Edition by Carmine.rc"
-cl ..\src\main.cpp ..\src\cpu.cpp ..\src\memory.cpp ..\src\fltused.c ..\lib\memcpy.cpp ..\lib\memset.cpp ..\lib\strlen.cpp "..\res\NES Emulator 2017 Edition by Carmine.res" -oNES.exe -GS- -GR- -GX- -FAcsu -Zi -link -nodefaultlib -LIBPATH:"C:\Users\Carmine\Downloads\SDL2-devel-2.0.5-VC\SDL2-2.0.5\lib\x64" kernel32.lib gdi32.lib user32.lib comdlg32.lib winmm.lib
+cl ..\lib\memcpy.cpp ..\lib\memset.cpp ..\lib\strlen.cpp -GS- -GR- -GX- -FAcsu -Og
+cl ..\src\main.cpp ..\src\cpu.cpp ..\src\memory.cpp ..\src\fltused.c ..\lib\memcpy.obj ..\lib\memset.obj ..\lib\strlen.obj "..\res\NES Emulator 2017 Edition by Carmine.res" -oNES.exe -GS- -GR- -GX- -FAcsu -Zi -O2 -Og -link -nodefaultlib -LIBPATH:"C:\Users\Carmine\Downloads\SDL2-devel-2.0.5-VC\SDL2-2.0.5\lib\x64" kernel32.lib gdi32.lib user32.lib comdlg32.lib winmm.lib

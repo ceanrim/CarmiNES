@@ -821,7 +821,7 @@ LRESULT CALLBACK DebuggerProc
                 }
                 case IDC_CYCLE:
                 {
-                    if(CPU::InstructionCycle == 0) //We fetch a new instruction
+                    if(CPU::InstructionCycle == 0)
                     {
                         CPU::CurrentInstruction = Memory::Read(CPU::PC);
                         CPU::InstructionCycle++;
@@ -844,7 +844,7 @@ LRESULT CALLBACK DebuggerProc
                 {
                     do
                     {
-                        if(CPU::InstructionCycle == 0) //We fetch a new instruction
+                        if(CPU::InstructionCycle == 0)
                         {
                             CPU::CurrentInstruction = Memory::Read(CPU::PC);
                             CPU::InstructionCycle++;
@@ -857,7 +857,7 @@ LRESULT CALLBACK DebuggerProc
                             CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
                             CPU::CurrentCycle++;
                         }
-                    } while(CPU::InstructionCycle != 0);
+                    } while(CPU::InstructionCycle != 1);
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
                                Debugger::CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
