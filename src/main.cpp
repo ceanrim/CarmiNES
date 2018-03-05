@@ -542,10 +542,11 @@ int CALLBACK WinMain
             }
             if(CPU::InstructionCycle == 0) //We fetch a new instruction
             {
+                CPU::PC = CPU::PCTemp;
                 CPU::CurrentInstruction = Memory::Read(CPU::PC);
                 CPU::InstructionCycle++;
                 CPU::CurrentCycle++;
-                CPU::PC++;
+                CPU::PCTemp++;
                 continue;
             }
             CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
