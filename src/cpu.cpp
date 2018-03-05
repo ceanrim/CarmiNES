@@ -130,6 +130,76 @@ namespace CPU
                         }
                         break;
                     }
+                    case 0x24: //BIT xx
+                    {
+                        unsigned char temp;
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     ADDR_ZERO_PAGE, &temp);
+                        if(InstructionCycle == 0)
+                        {
+                            unsigned char a = CPU::A & temp;
+                            if(a & 0b10000000)
+                            {
+                                CPU::P |= 0b10000000;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b01111111;
+                            }
+                            if(a & 0b01000000)
+                            {
+                                CPU::P |= 0b01000000;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b10111111;
+                            }
+                            if(!a)
+                            {
+                                CPU::P |= 0b00000010;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                        }
+                        break;
+                    }
+                    case 0x2c: //BIT xxxx
+                    {
+                        unsigned char temp;
+                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                                     ADDR_ABSOLUTE, &temp);
+                        if(InstructionCycle == 0)
+                        {
+                            unsigned char a = CPU::A & temp;
+                            if(a & 0b10000000)
+                            {
+                                CPU::P |= 0b10000000;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b01111111;
+                            }
+                            if(a & 0b01000000)
+                            {
+                                CPU::P |= 0b01000000;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b10111111;
+                            }
+                            if(!a)
+                            {
+                                CPU::P |= 0b00000010;
+                            }
+                            else
+                            {
+                                CPU::P &= 0b11111101;
+                            }
+                        }
+                        break;
+                    }
                     default:
                     {
                         CPU::InstructionCycle = 0;
