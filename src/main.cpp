@@ -857,7 +857,7 @@ LRESULT CALLBACK DebuggerProc
                             CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
                             CPU::CurrentCycle++;
                         }
-                    } while(CPU::InstructionCycle != 1);
+                    } while(CPU::InstructionCycle != 0);
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
                                Debugger::CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
