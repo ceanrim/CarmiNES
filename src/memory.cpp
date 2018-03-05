@@ -429,6 +429,30 @@ void Memory::Write(unsigned char valueToWrite,
                 break;
             }
         }
+        case ADDR_ZERO_PAGE_Y:
+        {
+            if(*cycle == 1)
+            {
+                AddressBus = Read(CPU::PCTemp);
+                CPU::PCTemp++;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 2)
+            {
+                Read(AddressBus);
+                AddressBus += CPU::Y;
+                AddressBus &= 255;
+                (*cycle)++;
+                break;
+            }
+            if(*cycle == 3)
+            {
+                Memory::Write(AddressBus, valueToWrite);
+                (*cycle) = 0;
+                break;
+            }
+        }
         case ADDR_ABSOLUTE:
         {
             if(*cycle == 1)

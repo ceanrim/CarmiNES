@@ -85,7 +85,7 @@ namespace CPU
                                 CPU::P &= 0b11111101;
                             }
                         }
-                    }
+                    } break;
                     case 0x4C: //JMP XXXX
                     {
                         if(CPU::InstructionCycle == 1)
@@ -501,9 +501,13 @@ namespace CPU
             } break;
             case 2: //ASL ROL LSR ROR STX LDX DEC INC
             {
-                switch(FuncCurrentInstruction & 0b11100000)
+                switch(FuncCurrentInstruction)
                 {
-                    case 0b10100000: //LDX
+                    case 0xA2: //LDX #xx
+                    case 0xA6: //LDX xx
+                    case 0xAE: //LDX xxxx
+                    case 0xB6: //LDX xx+Y
+                    case 0xBE: //LDX xxxx+Y
                     {
                         unsigned char addrMode = Memory::ConversionTable
                             [(((unsigned char)(FuncCurrentInstruction &
@@ -539,6 +543,21 @@ namespace CPU
                             }
                         }
                     } break;
+                    case 0x86: //STX xx
+                    case 0x8E: //STX xxxx
+                    case 0x96: //STX xx+Y
+                    {
+                        unsigned char addrMode = Memory::ConversionTable
+                            [(((unsigned char)(FuncCurrentInstruction &
+                                               (unsigned char) 0b00011100)) >> 2)];
+                        if(addrMode == ADDR_ZERO_PAGE_X)
+                        {
+                            addrMode = ADDR_ZERO_PAGE_Y;
+                        }
+                        Memory::Write(CPU::X, &CPU::InstructionCycle,
+                                      addrMode);
+                        break;
+                    }
                     default:
                     {
                         return;
