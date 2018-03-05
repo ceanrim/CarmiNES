@@ -10,7 +10,7 @@ namespace CPU
 {
     unsigned CurrentCycle;
     unsigned char A, X, Y, S, P;
-    unsigned short PC;
+    unsigned short PC, PCTemp;
     unsigned char InstructionCycle;
     unsigned char CurrentInstruction;
     void RunCycle(unsigned char FuncCurrentInstruction, unsigned char FuncInstructionCycle)
@@ -90,14 +90,14 @@ namespace CPU
                     {
                         if(CPU::InstructionCycle == 1)
                         {
-                            Memory::AddressBus = Memory::Read(PC);
-                            CPU::PC++;
+                            Memory::AddressBus = Memory::Read(PCTemp);
+                            CPU::PCTemp++;
                             CPU::InstructionCycle++;
                         }
                         else if(CPU::InstructionCycle == 2)
                         {
-                            Memory::AddressBus |= (Memory::Read(PC) << 8);
-                            CPU::PC = Memory::AddressBus;
+                            Memory::AddressBus |= (Memory::Read(PCTemp) << 8);
+                            CPU::PCTemp = Memory::AddressBus;
                             CPU::InstructionCycle = 0;
                         }
                         break;
@@ -106,13 +106,13 @@ namespace CPU
                     {
                         if(CPU::InstructionCycle == 1)
                         {
-                            Memory::AddressBus = Memory::Read(PC);
-                            PC++;
+                            Memory::AddressBus = Memory::Read(PCTemp);
+                            PCTemp++;
                             InstructionCycle++;
                         }
                         else if(CPU::InstructionCycle == 2)
                         {
-                            Memory::AddressBus |= (Memory::Read(PC) << 8);
+                            Memory::AddressBus |= (Memory::Read(PCTemp) << 8);
                             InstructionCycle++;
                         }
                         else if(CPU::InstructionCycle == 3)
@@ -125,7 +125,7 @@ namespace CPU
                         {
                             Memory::AddressBus |=
                                 (Memory::Read(Memory::temp+1) << 8);
-                            PC = Memory::AddressBus;
+                            PCTemp = Memory::AddressBus;
                             InstructionCycle = 0;
                         }
                         break;
@@ -362,8 +362,8 @@ namespace CPU
                     {
                         if(FuncCurrentInstruction == 0x89)
                         {
-                            Memory::Read(PC);
-                            PC++;
+                            Memory::Read(PCTemp);
+                            PCTemp++;
                             CPU::InstructionCycle = 0;
                         }
                         else
@@ -559,6 +559,7 @@ namespace CPU
     {
         PC = Memory::Read(0xFFFC);
         PC |= (((unsigned short)(Memory::Read(0xFFFD))) << 8);
+        PCTemp = PC;
         CurrentCycle = 7;
         InstructionCycle = 0;
         P = 0x34;
