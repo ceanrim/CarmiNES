@@ -233,12 +233,44 @@ namespace CPU
                     {
                         Y = A;
                         InstructionCycle = 0;
+                        if(CPU::Y & 128)
+                        {
+                            CPU::P |= 128;
+                        }
+                        else
+                        {
+                            CPU::P &= 127;
+                        }
+                        if(CPU::Y == 0)
+                        {
+                            CPU::P |= 2;
+                        }
+                        else
+                        {
+                            CPU::P &= 0b11111101;
+                        }
                         break;
                     }
                     case 0x98: //TYA
                     {
                         A = Y;
                         InstructionCycle = 0;
+                        if(CPU::A & 128)
+                        {
+                            CPU::P |= 128;
+                        }
+                        else
+                        {
+                            CPU::P &= 127;
+                        }
+                        if(CPU::A == 0)
+                        {
+                            CPU::P |= 2;
+                        }
+                        else
+                        {
+                            CPU::P &= 0b11111101;
+                        }
                         break;
                     }
                     default:
@@ -573,11 +605,71 @@ namespace CPU
                     {
                         X = A;
                         InstructionCycle = 0;
+                        if(CPU::X & 128)
+                        {
+                            CPU::P |= 128;
+                        }
+                        else
+                        {
+                            CPU::P &= 127;
+                        }
+                        if(CPU::X == 0)
+                        {
+                            CPU::P |= 2;
+                        }
+                        else
+                        {
+                            CPU::P &= 0b11111101;
+                        }
                         break;
                     }
                     case 0x8A: //TXA
                     {
                         A = X;
+                        InstructionCycle = 0;
+                        if(CPU::A & 128)
+                        {
+                            CPU::P |= 128;
+                        }
+                        else
+                        {
+                            CPU::P &= 127;
+                        }
+                        if(CPU::A == 0)
+                        {
+                            CPU::P |= 2;
+                        }
+                        else
+                        {
+                            CPU::P &= 0b11111101;
+                        }
+                        break;
+                    }
+                    case 0xBA: //TSX
+                    {
+                        X = S;
+                        InstructionCycle = 0;
+                        if(CPU::X & 128)
+                        {
+                            CPU::P |= 128;
+                        }
+                        else
+                        {
+                            CPU::P &= 127;
+                        }
+                        if(CPU::X == 0)
+                        {
+                            CPU::P |= 2;
+                        }
+                        else
+                        {
+                            CPU::P &= 0b11111101;
+                        }
+                        break;
+                    }
+                    case 0x9A: //TXS
+                    {
+                        S = X;
                         InstructionCycle = 0;
                         break;
                     }
