@@ -6,6 +6,7 @@
    ======================================================================== */
 #include "memory.h"
 #include "main.h"
+#include "cpu.h"
 namespace CPU
 {
     unsigned CurrentCycle;
@@ -200,11 +201,6 @@ namespace CPU
                         }
                         break;
                     }
-                    default:
-                    {
-                        CPU::InstructionCycle = 0;
-                        break;
-                    }
                     case 0x84: //STY xx
                     case 0x8C: //STY xxxx
                     case 0x94: //STY xx+X
@@ -213,6 +209,41 @@ namespace CPU
                             [(((unsigned char)(FuncCurrentInstruction &
                                                (unsigned char) 0b00011100)) >> 2)];
                         Memory::Write(CPU::Y, &CPU::InstructionCycle, addrMode);
+                        break;
+                    }
+                    case 0xC0: //CPY #xx
+                    case 0xC4: //CPY xx
+                    case 0xCC: //CPY xxxx
+                    {
+                        CMP(&CPU::Y, Memory::ConversionTable
+                            [(((unsigned char)(FuncCurrentInstruction &
+                                               (unsigned char) 0b00011100)) >> 2)]);
+                        break;
+                    }
+                    case 0xE0: //CPX #xx
+                    case 0xE4: //CPX xx
+                    case 0xEC: //CPX xxxx
+                    {
+                        CMP(&CPU::X, Memory::ConversionTable
+                            [(((unsigned char)(FuncCurrentInstruction &
+                                               (unsigned char)0b00011100)) >> 2)]);
+                        break;
+                    }
+                    case 0xA8: //TAY
+                    {
+                        Y = A;
+                        InstructionCycle = 0;
+                        break;
+                    }
+                    case 0x98: //TYA
+                    {
+                        A = Y;
+                        InstructionCycle = 0;
+                        break;
+                    }
+                    default:
+                    {
+                        CPU::InstructionCycle = 0;
                         break;
                     }
                 }
@@ -413,38 +444,8 @@ namespace CPU
                     } break;
                     case 0b11000000: //CMP
                     {
-                        unsigned char temp;
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     (unsigned char)(FuncCurrentInstruction &
-                                                     (unsigned char)0b00011100),
-                                     &temp);
-                        if(CPU::InstructionCycle == 0)
-                        {
-                            if(((CPU::A)-(temp)) & 128)
-                            {
-                                CPU::P |= 128;
-                            }
-                            else
-                            {
-                                CPU::P &= 127;
-                            }
-                            if(CPU::A == temp)
-                            {
-                                CPU::P |= 2;
-                            }
-                            else
-                            {
-                                CPU::P &= 0b11111101;
-                            }
-                            if(temp <= CPU::A)
-                            {
-                                CPU::P |= 1;
-                            }
-                            else
-                            {
-                                CPU::P &= 0b11111110;
-                            }
-                        }
+                        CMP(&CPU::A, (unsigned char)(FuncCurrentInstruction &
+                                                     (unsigned char)0b00011100));
                     } break;
                     case 0b11100000: //SBC
                     {
@@ -568,6 +569,18 @@ namespace CPU
                                       addrMode);
                         break;
                     }
+                    case 0xAA: //TAX
+                    {
+                        X = A;
+                        InstructionCycle = 0;
+                        break;
+                    }
+                    case 0x8A: //TXA
+                    {
+                        A = X;
+                        InstructionCycle = 0;
+                        break;
+                    }
                     default:
                     {
                         return;
@@ -583,6 +596,40 @@ namespace CPU
             }
         }
         return; //TODO
+    }
+    void CMP(unsigned char *Register, unsigned char addrMode)
+    {
+        unsigned char temp;
+        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
+                     addrMode,
+                     &temp);
+        if(CPU::InstructionCycle == 0)
+        {
+            if(((*Register)-(temp)) & 128)
+            {
+                CPU::P |= 128;
+            }
+            else
+            {
+                CPU::P &= 127;
+            }
+            if(*Register == temp)
+            {
+                CPU::P |= 2;
+            }
+            else
+            {
+                CPU::P &= 0b11111101;
+            }
+            if(temp <= *Register)
+            {
+                CPU::P |= 1;
+            }
+            else
+            {
+                CPU::P &= 0b11111110;
+            }
+        }
     }
     void Reset()
     {
