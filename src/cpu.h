@@ -18,5 +18,6 @@ namespace CPU
     extern void RunCycle(unsigned char, unsigned char);
     extern void Reset();
     extern void CMP(unsigned char*, unsigned char);
+    extern void Branch(unsigned char, bool);
 }
 #endif

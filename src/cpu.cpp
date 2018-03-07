@@ -273,6 +273,46 @@ namespace CPU
                         }
                         break;
                     }
+                    case 0x90: //BCC
+                    {
+                        Branch(1, true);
+                        break;
+                    }
+                    case 0xB0: //BCS
+                    {
+                        Branch(1, false);
+                        break;
+                    }
+                    case 0xD0: //BNE
+                    {
+                        Branch(2, true);
+                        break;
+                    }
+                    case 0xF0: //BEQ
+                    {
+                        Branch(2, false);
+                        break;
+                    }
+                    case 0x10: //BPL
+                    {
+                        Branch(128, true);
+                        break;
+                    }
+                    case 0x30: //BMI
+                    {
+                        Branch(128, false);
+                        break;
+                    }
+                    case 0x50: //BVC
+                    {
+                        Branch(64, true);
+                        break;
+                    }
+                    case 0x70: //BVS
+                    {
+                        Branch(64, false);
+                        break;
+                    }
                     default:
                     {
                         CPU::InstructionCycle = 0;
@@ -721,6 +761,55 @@ namespace CPU
             {
                 CPU::P &= 0b11111110;
             }
+        }
+    }
+    void Branch(unsigned char flag, bool clear)
+    {
+        if(InstructionCycle == 1)
+        {
+            Memory::temp = Memory::Read(CPU::PCTemp);
+            CPU::PCTemp++;
+            if(clear)
+            {
+                if(!(P & flag))
+                {
+                    InstructionCycle++;
+                }
+                else
+                {
+                    InstructionCycle = 0;
+                }
+            }
+            else
+            {
+                if(P & flag)
+                {
+                    InstructionCycle++;
+                }
+                else
+                {
+                    InstructionCycle = 0;
+                }
+            }
+        }
+        else if(InstructionCycle == 2)
+        {
+            Memory::Read(CPU::PCTemp);
+            if((CPU::PCTemp >> 8) !=
+               ((CPU::PCTemp + (char)Memory::temp) >> 8))
+            {
+                InstructionCycle++;
+            }
+            else
+            {
+                InstructionCycle = 0;
+            }
+            CPU::PCTemp += (char)Memory::temp;
+        }
+        else if(InstructionCycle == 3)
+        {
+            Memory::Read(CPU::PCTemp - 256);
+            InstructionCycle = 0;
         }
     }
     void Reset()

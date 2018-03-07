@@ -683,9 +683,14 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             }
             case ADDR_RELATIVE: //TODO
             {
+                string[a] = ' ';
+                a++;
+                unsigned short b_ = b + (char)Memory::ReadWithNoSideEffects(b+1) + 2;
+                UshorttoHex(b_, string+a, false);
+                a += 4;
                 string[a] = '\n';
                 a++;
-                b++;
+                b+=2;
                 break;
             }
             default:
