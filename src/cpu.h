@@ -15,6 +15,8 @@ namespace CPU
                            //The cycle we are in in the current instruction;
                            //0 if we've just completed one
     extern unsigned char CurrentInstruction; //The instruction we're running
+    extern unsigned short AddressBus;
+    extern unsigned char temp;
     extern void RunCycle(unsigned char, unsigned char);
     extern void Reset();
     extern void CMP(unsigned char*, unsigned char);

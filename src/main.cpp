@@ -11,6 +11,7 @@
 #include "memory.h"
 namespace globals
 {
+    Memory RAM = Memory();
     int Region = PAL;
     float Speed = 1;
     bool Running;
@@ -407,21 +408,21 @@ bool LoadROM(char *path)
         MessageBox(0, TEXT("Invalid NES file."), TEXT("Error"), MB_OK);
         return false;
     }
-    Memory::Mapper = (FileMemoryChar[6] >> 4) | (FileMemoryChar[7] & 0xF0);
-    if(Memory::Mapper != 0)
+    globals::RAM.Mapper = (FileMemoryChar[6] >> 4) | (FileMemoryChar[7] & 0xF0);
+    if(globals::RAM.Mapper != 0)
     {
         MessageBox(0, TEXT("Unsupported mapper."), TEXT("Error"), MB_OK);
         return false;
     }
-    Memory::PRGROMSize = FileMemoryChar[4] << 14;
-    if((Memory::PRGROMSize != 16384) && (Memory::PRGROMSize != 32768))
+    globals::RAM.PRGROMSize = FileMemoryChar[4] << 14;
+    if((globals::RAM.PRGROMSize != 16384) && (globals::RAM.PRGROMSize != 32768))
     {
         MessageBox(0, TEXT("Mapper 0 file of size different from 16k or 32k."),
                    TEXT("Error"), MB_OK);
         return false;
     }
     unsigned char *PRGROM = FileMemoryChar + 16;
-    memcpy(globals::CartridgeMemory, PRGROM, Memory::PRGROMSize);
+    memcpy(globals::CartridgeMemory, PRGROM, globals::RAM.PRGROMSize);
     CloseHandle(FileHandle);
     globals::IsAROMLoaded = true;
     CPU::Reset();
@@ -501,7 +502,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
         UshorttoHex(b, string+a, false);
         string[a += 4] = ' ';
         a++;
-        unsigned char Instruction = Memory::ReadWithNoSideEffects(b);
+        unsigned char Instruction = globals::RAM.ReadWithNoSideEffects(b);
         void const *InstructionString =
             (void const *)globals::InstructionTable[Instruction];
         memcpy((void *)&(string[a]), InstructionString, 4);
@@ -521,7 +522,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 a++;
                 string[a] = '#';
                 a++;
-                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a+=2;
                 string[a] = '\n';
                 a++;
@@ -532,7 +533,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a+=2;
                 string[a] = '\n';
                 a++;
@@ -543,7 +544,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a+=2;
                 string[a] = '+';
                 a++;
@@ -558,7 +559,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a+=2;
                 string[a] = '+';
                 a++;
@@ -573,8 +574,8 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                unsigned short c = Memory::ReadWithNoSideEffects(b+1);
-                c |= (Memory::ReadWithNoSideEffects(b+2) << 8);
+                unsigned short c = globals::RAM.ReadWithNoSideEffects(b+1);
+                c |= (globals::RAM.ReadWithNoSideEffects(b+2) << 8);
                 UshorttoHex(c, string+a, false);
                 a += 4;
                 string[a] = '\n';
@@ -588,8 +589,8 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 a++;
                 string[a] = '(';
                 a++;
-                unsigned short c = Memory::ReadWithNoSideEffects(b+1);
-                c |= (Memory::ReadWithNoSideEffects(b+2) << 8);
+                unsigned short c = globals::RAM.ReadWithNoSideEffects(b+1);
+                c |= (globals::RAM.ReadWithNoSideEffects(b+2) << 8);
                 UshorttoHex(c, string+a, false);
                 a+=4;
                 string[a] = ')';
@@ -603,8 +604,8 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                unsigned short c = Memory::ReadWithNoSideEffects(b+1);
-                c |= (Memory::ReadWithNoSideEffects(b+2) << 8);
+                unsigned short c = globals::RAM.ReadWithNoSideEffects(b+1);
+                c |= (globals::RAM.ReadWithNoSideEffects(b+2) << 8);
                 UshorttoHex(c, string+a, false);
                 a += 4;
                 string[a] = '+';
@@ -620,8 +621,8 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                unsigned short c = Memory::ReadWithNoSideEffects(b+1);
-                c |= (Memory::ReadWithNoSideEffects(b+2) << 8);
+                unsigned short c = globals::RAM.ReadWithNoSideEffects(b+1);
+                c |= (globals::RAM.ReadWithNoSideEffects(b+2) << 8);
                 UshorttoHex(c, string+a, false);
                 a += 4;
                 string[a] = '+';
@@ -639,7 +640,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 a++;
                 string[a] = '(';
                 a++;
-                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a += 2;
                 string[a] = '+';
                 a++;
@@ -658,7 +659,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 a++;
                 string[a] = '(';
                 a++;
-                UchartoHex(Memory::ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a += 2;
                 string[a] = ')';
                 a++;
@@ -685,7 +686,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                unsigned short b_ = b + (char)Memory::ReadWithNoSideEffects(b+1) + 2;
+                unsigned short b_ = b + (char)globals::RAM.ReadWithNoSideEffects(b+1) + 2;
                 UshorttoHex(b_, string+a, false);
                 a += 4;
                 string[a] = '\n';
@@ -717,7 +718,7 @@ void ShowMemory(HWND hWnd, int Control, unsigned short Address)
         {
             string[k] = ' ';
             k++;
-            UchartoHex(Memory::ReadWithNoSideEffects(Address+i), string+k, false);
+            UchartoHex(globals::RAM.ReadWithNoSideEffects(Address+i), string+k, false);
             k += 2;
         }
         string[k] = '\r';
@@ -829,7 +830,7 @@ LRESULT CALLBACK DebuggerProc
                     if(CPU::InstructionCycle == 0)
                     {
                         CPU::PC = CPU::PCTemp;
-                        CPU::CurrentInstruction = Memory::Read(CPU::PCTemp);
+                        CPU::CurrentInstruction = globals::RAM.Read(CPU::PCTemp);
                         CPU::InstructionCycle++;
                         CPU::CurrentCycle++;
                         ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
@@ -853,7 +854,7 @@ LRESULT CALLBACK DebuggerProc
                         if(CPU::InstructionCycle == 0)
                         {
                             CPU::PC = CPU::PCTemp;
-                            CPU::CurrentInstruction = Memory::Read(CPU::PCTemp);
+                            CPU::CurrentInstruction = globals::RAM.Read(CPU::PCTemp);
                             CPU::InstructionCycle++;
                             CPU::CurrentCycle++;
                             ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
@@ -1131,16 +1132,16 @@ int CALLBACK WinMain
     WindowClass.lpszClassName = "CarmiNESWindowClass";
     RegisterClass(&WindowClass);
     globals::Window = CreateWindow("CarmiNESWindowClass",
-                               "CarmiNES",
-                               WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-                               CW_USEDEFAULT,
-                               CW_USEDEFAULT,
-                               CW_USEDEFAULT,
-                               CW_USEDEFAULT,
-                               NULL,
-                               NULL,
-                               hInstance,
-                               NULL);
+                                   "CarmiNES",
+                                   WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                                   CW_USEDEFAULT,
+                                   CW_USEDEFAULT,
+                                   CW_USEDEFAULT,
+                                   CW_USEDEFAULT,
+                                   NULL,
+                                   NULL,
+                                   hInstance,
+                                   NULL);
     if(!globals::Window)
     {
         int a = GetLastError();
@@ -1195,7 +1196,7 @@ int CALLBACK WinMain
                 if(CPU::InstructionCycle == 0) //We fetch a new instruction
                 {
                     CPU::PC = CPU::PCTemp;
-                    CPU::CurrentInstruction = Memory::Read(CPU::PC);
+                    CPU::CurrentInstruction = globals::RAM.Read(CPU::PC);
                     CPU::InstructionCycle++;
                     CPU::CurrentCycle++;
                     CPU::PCTemp++;

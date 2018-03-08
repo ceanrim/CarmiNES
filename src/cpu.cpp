@@ -14,6 +14,8 @@ namespace CPU
     unsigned short PC, PCTemp;
     unsigned char InstructionCycle;
     unsigned char CurrentInstruction;
+    unsigned short AddressBus;
+    unsigned char  temp;
     void RunCycle(unsigned char FuncCurrentInstruction, unsigned char FuncInstructionCycle)
     {
         switch(FuncCurrentInstruction & 0b00000011)
@@ -61,12 +63,12 @@ namespace CPU
                     } break;
                     case 0xA0: case 0xA4: case 0xAC: case 0xB4: case 0xBC: //LDY
                     {
-                        unsigned char addrMode = Memory::ConversionTable
+                        unsigned char addrMode = globals::RAM.ConversionTable
                             [(((unsigned char)(FuncCurrentInstruction &
                                                (unsigned char)0b00011100)) >> 2)];
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     addrMode,
-                                     &CPU::Y);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 addrMode,
+                                 &CPU::Y);
                         if(CPU::InstructionCycle == 0)
                         {
                             if(CPU::Y & 128)
@@ -91,14 +93,14 @@ namespace CPU
                     {
                         if(CPU::InstructionCycle == 1)
                         {
-                            Memory::AddressBus = Memory::Read(PCTemp);
+                            AddressBus = globals::RAM.Read(PCTemp);
                             CPU::PCTemp++;
                             CPU::InstructionCycle++;
                         }
                         else if(CPU::InstructionCycle == 2)
                         {
-                            Memory::AddressBus |= (Memory::Read(PCTemp) << 8);
-                            CPU::PCTemp = Memory::AddressBus;
+                            AddressBus |= (globals::RAM.Read(PCTemp) << 8);
+                            CPU::PCTemp = AddressBus;
                             CPU::InstructionCycle = 0;
                         }
                         break;
@@ -107,26 +109,26 @@ namespace CPU
                     {
                         if(CPU::InstructionCycle == 1)
                         {
-                            Memory::AddressBus = Memory::Read(PCTemp);
+                            AddressBus = globals::RAM.Read(PCTemp);
                             PCTemp++;
                             InstructionCycle++;
                         }
                         else if(CPU::InstructionCycle == 2)
                         {
-                            Memory::AddressBus |= (Memory::Read(PCTemp) << 8);
+                            AddressBus |= (globals::RAM.Read(PCTemp) << 8);
                             InstructionCycle++;
                         }
                         else if(CPU::InstructionCycle == 3)
                         {
-                            Memory::temp = Memory::AddressBus;
-                            Memory::AddressBus &= Memory::Read(Memory::temp);
+                            temp = AddressBus;
+                            AddressBus &= globals::RAM.Read(temp);
                             InstructionCycle++;
                         }
                         else if(CPU::InstructionCycle == 4)
                         {
-                            Memory::AddressBus |=
-                                (Memory::Read(Memory::temp+1) << 8);
-                            PCTemp = Memory::AddressBus;
+                            AddressBus |=
+                                (globals::RAM.Read(temp+1) << 8);
+                            PCTemp = AddressBus;
                             InstructionCycle = 0;
                         }
                         break;
@@ -134,8 +136,8 @@ namespace CPU
                     case 0x24: //BIT xx
                     {
                         unsigned char temp;
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     ADDR_ZERO_PAGE, &temp);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 ADDR_ZERO_PAGE, &temp);
                         if(InstructionCycle == 0)
                         {
                             unsigned char a = CPU::A & temp;
@@ -169,8 +171,8 @@ namespace CPU
                     case 0x2c: //BIT xxxx
                     {
                         unsigned char temp;
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     ADDR_ABSOLUTE, &temp);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 ADDR_ABSOLUTE, &temp);
                         if(InstructionCycle == 0)
                         {
                             unsigned char a = CPU::A & temp;
@@ -205,17 +207,17 @@ namespace CPU
                     case 0x8C: //STY xxxx
                     case 0x94: //STY xx+X
                     {
-                        unsigned char addrMode = Memory::ConversionTable
+                        unsigned char addrMode = globals::RAM.ConversionTable
                             [(((unsigned char)(FuncCurrentInstruction &
                                                (unsigned char) 0b00011100)) >> 2)];
-                        Memory::Write(CPU::Y, &CPU::InstructionCycle, addrMode);
+                        globals::RAM.Write(CPU::Y, &CPU::InstructionCycle, addrMode);
                         break;
                     }
                     case 0xC0: //CPY #xx
                     case 0xC4: //CPY xx
                     case 0xCC: //CPY xxxx
                     {
-                        CMP(&CPU::Y, Memory::ConversionTable
+                        CMP(&CPU::Y, globals::RAM.ConversionTable
                             [(((unsigned char)(FuncCurrentInstruction &
                                                (unsigned char) 0b00011100)) >> 2)]);
                         break;
@@ -224,7 +226,7 @@ namespace CPU
                     case 0xE4: //CPX xx
                     case 0xEC: //CPX xxxx
                     {
-                        CMP(&CPU::X, Memory::ConversionTable
+                        CMP(&CPU::X, globals::RAM.ConversionTable
                             [(((unsigned char)(FuncCurrentInstruction &
                                                (unsigned char)0b00011100)) >> 2)]);
                         break;
@@ -327,10 +329,10 @@ namespace CPU
                     case 0b00000000: //ORA
                     {
                         unsigned char temp;
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     (unsigned char)(FuncCurrentInstruction &
-                                                     (unsigned char)0b00011100),
-                                     &temp);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 (unsigned char)(FuncCurrentInstruction &
+                                                 (unsigned char)0b00011100),
+                                 &temp);
                         if(CPU::InstructionCycle == 0)
                         {
                             CPU::A |= temp;
@@ -358,10 +360,10 @@ namespace CPU
                     case 0b00100000: //AND
                     {
                         unsigned char temp;
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     (unsigned char)(FuncCurrentInstruction &
-                                                     (unsigned char)0b00011100),
-                                     &temp);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 (unsigned char)(FuncCurrentInstruction &
+                                                 (unsigned char)0b00011100),
+                                 &temp);
                         if(CPU::InstructionCycle == 0)
                         {
                             CPU::A &= temp;
@@ -386,10 +388,10 @@ namespace CPU
                     case 0b01000000: //EOR
                     {
                         unsigned char temp;
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     (unsigned char)(FuncCurrentInstruction &
-                                                     (unsigned char)0b00011100),
-                                     &temp);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 (unsigned char)(FuncCurrentInstruction &
+                                                 (unsigned char)0b00011100),
+                                 &temp);
                         if(CPU::InstructionCycle == 0)
                         {
                             CPU::A ^= temp;
@@ -414,10 +416,10 @@ namespace CPU
                     case 0b01100000: //ADC
                     {
                         unsigned char temp;
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     (unsigned char)(FuncCurrentInstruction &
-                                                     (unsigned char)0b00011100),
-                                     &temp);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 (unsigned char)(FuncCurrentInstruction &
+                                                 (unsigned char)0b00011100),
+                                 &temp);
                         if(CPU::InstructionCycle == 0)
                         {
                             bool Carry = false;
@@ -475,25 +477,25 @@ namespace CPU
                     {
                         if(FuncCurrentInstruction == 0x89)
                         {
-                            Memory::Read(PCTemp);
+                            globals::RAM.Read(PCTemp);
                             PCTemp++;
                             CPU::InstructionCycle = 0;
                         }
                         else
                         {
-                            Memory::Write(CPU::A,
-                                          &CPU::InstructionCycle,
-                                          (unsigned char)
-                                          (FuncCurrentInstruction &
-                                           (unsigned char)0b00011100));
+                            globals::RAM.Write(CPU::A,
+                                      &CPU::InstructionCycle,
+                                      (unsigned char)
+                                      (FuncCurrentInstruction &
+                                       (unsigned char)0b00011100));
                         }
                     } break;
                     case 0b10100000: //LDA
                     {                     
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     (unsigned char)(FuncCurrentInstruction &
-                                                     (unsigned char)0b00011100),
-                                     &CPU::A);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 (unsigned char)(FuncCurrentInstruction &
+                                                 (unsigned char)0b00011100),
+                                 &CPU::A);
                         if(CPU::InstructionCycle == 0)
                         {
                             if(CPU::A & 128)
@@ -523,10 +525,10 @@ namespace CPU
                     {
                         
                         unsigned char temp;
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     (unsigned char)(FuncCurrentInstruction &
-                                                     (unsigned char)0b00011100),
-                                     &temp);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 (unsigned char)(FuncCurrentInstruction &
+                                                 (unsigned char)0b00011100),
+                                 &temp);
                         if(CPU::InstructionCycle == 0)
                         {
                             bool Carry = false;
@@ -592,7 +594,7 @@ namespace CPU
                     case 0xB6: //LDX xx+Y
                     case 0xBE: //LDX xxxx+Y
                     {
-                        unsigned char addrMode = Memory::ConversionTable
+                        unsigned char addrMode = globals::RAM.ConversionTable
                             [(((unsigned char)(FuncCurrentInstruction &
                                                (unsigned char)0b00011100)) >> 2)];
                         if(addrMode == ADDR_ZERO_PAGE_X)
@@ -603,9 +605,9 @@ namespace CPU
                         {
                             addrMode = ADDR_ABSOLUTE_Y;
                         }
-                        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                                     addrMode,
-                                     &CPU::X);
+                        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                                 addrMode,
+                                 &CPU::X);
                         if(CPU::InstructionCycle == 0)
                         {
                             if(CPU::X & 128)
@@ -630,15 +632,15 @@ namespace CPU
                     case 0x8E: //STX xxxx
                     case 0x96: //STX xx+Y
                     {
-                        unsigned char addrMode = Memory::ConversionTable
+                        unsigned char addrMode = globals::RAM.ConversionTable
                             [(((unsigned char)(FuncCurrentInstruction &
                                                (unsigned char) 0b00011100)) >> 2)];
                         if(addrMode == ADDR_ZERO_PAGE_X)
                         {
                             addrMode = ADDR_ZERO_PAGE_Y;
                         }
-                        Memory::Write(CPU::X, &CPU::InstructionCycle,
-                                      addrMode);
+                        globals::RAM.Write(CPU::X, &CPU::InstructionCycle,
+                                  addrMode);
                         break;
                     }
                     case 0xAA: //TAX
@@ -732,9 +734,9 @@ namespace CPU
     void CMP(unsigned char *Register, unsigned char addrMode)
     {
         unsigned char temp;
-        Memory::Read((unsigned short)0, &CPU::InstructionCycle,
-                     addrMode,
-                     &temp);
+        globals::RAM.Read((unsigned short)0, &CPU::InstructionCycle,
+                 addrMode,
+                 &temp);
         if(CPU::InstructionCycle == 0)
         {
             if(((*Register)-(temp)) & 128)
@@ -767,7 +769,7 @@ namespace CPU
     {
         if(InstructionCycle == 1)
         {
-            Memory::temp = Memory::Read(CPU::PCTemp);
+            temp = globals::RAM.Read(CPU::PCTemp);
             CPU::PCTemp++;
             if(clear)
             {
@@ -794,9 +796,9 @@ namespace CPU
         }
         else if(InstructionCycle == 2)
         {
-            Memory::Read(CPU::PCTemp);
+            globals::RAM.Read(CPU::PCTemp);
             if((CPU::PCTemp >> 8) !=
-               ((CPU::PCTemp + (char)Memory::temp) >> 8))
+               ((CPU::PCTemp + (char)temp) >> 8))
             {
                 InstructionCycle++;
             }
@@ -804,18 +806,18 @@ namespace CPU
             {
                 InstructionCycle = 0;
             }
-            CPU::PCTemp += (char)Memory::temp;
+            CPU::PCTemp += (char)temp;
         }
         else if(InstructionCycle == 3)
         {
-            Memory::Read(CPU::PCTemp - 256);
+            globals::RAM.Read(CPU::PCTemp - 256);
             InstructionCycle = 0;
         }
     }
     void Reset()
     {
-        PC = Memory::Read(0xFFFC);
-        PC |= (((unsigned short)(Memory::Read(0xFFFD))) << 8);
+        PC = globals::RAM.Read(0xFFFC);
+        PC |= (((unsigned short)(globals::RAM.Read(0xFFFD))) << 8);
         PCTemp = PC;
         CurrentCycle = 7;
         InstructionCycle = 0;

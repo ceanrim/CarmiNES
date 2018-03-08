@@ -19,26 +19,29 @@
 #define ADDR_ACCUMULATOR  0b00101000
 #define ADDR_RELATIVE     0b00101100
 #define ADDR_ABSOLUTE_IND 0b00110000
-namespace Memory
+class Memory
 {
-    extern unsigned short AddressBus; //To hold data between cycles
-    extern unsigned short temp; //Need it for indexed indirect
-    extern unsigned char Read(unsigned short); //Reads the memory
-                                               //at the corresponding address
-    extern unsigned char ReadWithNoSideEffects(unsigned short);
-    extern void Read(unsigned short address,   //Processes addressing modes
-                     unsigned char* cycle,     //in a cycle-accurate way
-                     unsigned char  addrMode,
-                     unsigned char* valueToRewrite);
-    extern void Write(unsigned short address,
-                      unsigned char valueToWrite);
-    extern void Write(unsigned char valueToWrite,
-                      unsigned char* cycle,
-                      unsigned char addrMode);
-    extern unsigned char ConversionTable[]; //for xxxxxx00 instructions
-    extern bool AddressCarry;
-    extern unsigned short Mapper;
-    extern unsigned short PRGROMSize;
-}
+private:
+    unsigned short AddressBus; //To hold data between cycles
+    unsigned short temp; //Need it for indexed indirect
+    bool AddressCarry;
+public:
+    Memory();
+    unsigned char Read(unsigned short); //Reads the memory
+                                        //at the corresponding address
+    unsigned char ReadWithNoSideEffects(unsigned short);
+    void Read(unsigned short address,   //Processes addressing modes
+              unsigned char* cycle,     //in a cycle-accurate way
+              unsigned char  addrMode,
+              unsigned char* valueToRewrite);
+    void Write(unsigned short address,
+               unsigned char valueToWrite);
+    void Write(unsigned char valueToWrite,
+               unsigned char* cycle,
+               unsigned char addrMode);
+    unsigned char ConversionTable[8]; //for xxxxxx00 instructions
+    unsigned short Mapper;
+    unsigned short PRGROMSize;
+};
 
 #endif

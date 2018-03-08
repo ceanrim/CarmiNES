@@ -7,6 +7,7 @@
    ======================================================================== */
 #include <windows.h>
 #include "..\res\resource.h"
+#include "memory.h"
 #define MAIN_H
 #define PAL 1
 #define NTSC 0
@@ -14,6 +15,7 @@
 #define NTSC_CYCLE_COUNT 29830 //Cycles every frame for a NTSC system
 namespace globals
 {
+    extern Memory RAM;
     extern int Region;
     extern float Speed;
     extern bool Running; // if this is false the program closes
