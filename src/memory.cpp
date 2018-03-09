@@ -7,14 +7,14 @@
 #include "memory.h"
 #include "cpu.h"
 #include "main.h"
-Memory::Memory():
+MemoryClass::MemoryClass():
         AddressCarry(false),
         ConversionTable{ADDR_IMMEDIATE, ADDR_ZERO_PAGE, 0,
                         ADDR_ABSOLUTE, 0, ADDR_ZERO_PAGE_X,
                         0, ADDR_ABSOLUTE_X}
 {
 }
-unsigned char Memory::Read(unsigned short Address)
+unsigned char MemoryClass::Read(unsigned short Address)
 /*NES memory structure:
   0x0000-0x07ff Internal Memory
   0x0800-0x1fff Mirrors three times 0x0000-0x07ff
@@ -22,29 +22,29 @@ unsigned char Memory::Read(unsigned short Address)
 {
     if(Address < 0x2000)
     {
-        return globals::InternalMemory[Address % 0x800];
+        return NES.InternalMemory[Address % 0x800];
     }
     if((Address >= 0x8000) && (Address < 0xC000))
     {
-        return globals::CartridgeMemory[Address - 0x8000];
+        return NES.CartridgeMemory[Address - 0x8000];
     }
     if(Address >= 0xC000)
     {
-        if(Memory::Mapper == 0)
+        if(this->Mapper == 0)
         {
             if(PRGROMSize == 16384)
             {
-                return globals::CartridgeMemory[Address - 0xC000];
+                return NES.CartridgeMemory[Address - 0xC000];
             }
             if(PRGROMSize == 32768)
             {
-                return globals::CartridgeMemory[Address - 0x8000];
+                return NES.CartridgeMemory[Address - 0x8000];
             }
         }
     }
 }
 
-unsigned char Memory::ReadWithNoSideEffects(unsigned short Address)
+unsigned char MemoryClass::ReadWithNoSideEffects(unsigned short Address)
 /*NES memory structure:
   0x0000-0x07ff Internal Memory
   0x0800-0x1fff Mirrors three times 0x0000-0x07ff
@@ -53,31 +53,31 @@ unsigned char Memory::ReadWithNoSideEffects(unsigned short Address)
 {
     if(Address < 0x2000)
     {
-        return globals::InternalMemory[Address % 0x800];
+        return NES.InternalMemory[Address % 0x800];
     }
     if((Address >= 0x8000) && (Address < 0xC000))
     {
-        return globals::CartridgeMemory[Address - 0x8000];
+        return NES.CartridgeMemory[Address - 0x8000];
     }
     if(Address >= 0xC000)
     {
-        if(Memory::Mapper == 0)
+        if(this->Mapper == 0)
         {
             if(PRGROMSize == 16384)
             {
-                return globals::CartridgeMemory[Address - 0xC000];
+                return NES.CartridgeMemory[Address - 0xC000];
             }
             if(PRGROMSize == 32768)
             {
-                return globals::CartridgeMemory[Address - 0x8000];
+                return NES.CartridgeMemory[Address - 0x8000];
             }
         }
     }
 }
-void Memory::Read(unsigned short address,
-                  unsigned char* cycle,
-                  unsigned char  addrMode,
-                  unsigned char* valueToRewrite)
+void MemoryClass::Read(unsigned short address,
+                       unsigned char* cycle,
+                       unsigned char  addrMode,
+                       unsigned char* valueToRewrite)
 {
     switch(addrMode)
     {
@@ -85,14 +85,14 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                *valueToRewrite = Memory::Read(AddressBus);
+                *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
@@ -101,22 +101,22 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
                 Read(AddressBus);
-                AddressBus += CPU::X;
+                AddressBus += NES.CPU.X;
                 AddressBus &= 255;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                *valueToRewrite = Memory::Read(AddressBus);
+                *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
@@ -125,52 +125,52 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
                 Read(AddressBus);
-                AddressBus += CPU::Y;
+                AddressBus += NES.CPU.Y;
                 AddressBus &= 255;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                *valueToRewrite = Memory::Read(AddressBus);
+                *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
         }
         case ADDR_IMMEDIATE:
         {
-            *valueToRewrite = Memory::Read(CPU::PCTemp);
-            CPU::InstructionCycle = 0;
-            CPU::PCTemp++;
+            *valueToRewrite = Read(NES.CPU.PCTemp);
+            NES.CPU.InstructionCycle = 0;
+            NES.CPU.PCTemp++;
             break;
         }
         case ADDR_ABSOLUTE:
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
-                CPU::PCTemp++;
+                AddressBus |= (Read(NES.CPU.PCTemp) << 8);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                *valueToRewrite = Memory::Read(AddressBus);
+                *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
@@ -179,15 +179,15 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
-                if((AddressBus >> 8) != ((AddressBus+CPU::X) >> 8))
+                AddressBus |= (Read(NES.CPU.PCTemp) << 8);
+                if((AddressBus >> 8) != ((AddressBus+NES.CPU.X) >> 8))
                 {
                     AddressCarry = true; //Crossing pages takes one clock cycle
                 }
@@ -195,8 +195,8 @@ void Memory::Read(unsigned short address,
                 {
                     AddressCarry = false;
                 }
-                AddressBus += CPU::X;
-                CPU::PCTemp++;
+                AddressBus += NES.CPU.X;
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -204,17 +204,17 @@ void Memory::Read(unsigned short address,
             {
                 if(!AddressCarry)
                 {
-                    *valueToRewrite = Memory::Read(AddressBus);
+                    *valueToRewrite = Read(AddressBus);
                     (*cycle) = 0;
                     break;
                 }
-                Memory::Read(AddressBus - 256);
+                Read(AddressBus - 256);
                 (*cycle)++;
                 break;
             }
             if(*cycle == 4)
             {
-                *valueToRewrite = Memory::Read(AddressBus);
+                *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
@@ -223,15 +223,15 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
-                if((AddressBus >> 8) != ((AddressBus+CPU::Y) >> 8))
+                AddressBus |= (Read(NES.CPU.PCTemp) << 8);
+                if((AddressBus >> 8) != ((AddressBus+NES.CPU.Y) >> 8))
                 {
                     AddressCarry = true; //Crossing pages takes one clock cycle
                 }
@@ -239,8 +239,8 @@ void Memory::Read(unsigned short address,
                 {
                     AddressCarry = false;
                 }
-                AddressBus += CPU::Y;
-                CPU::PCTemp++;
+                AddressBus += NES.CPU.Y;
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
@@ -248,17 +248,17 @@ void Memory::Read(unsigned short address,
             {
                 if(!AddressCarry)
                 {
-                    *valueToRewrite = Memory::Read(AddressBus);
+                    *valueToRewrite = Read(AddressBus);
                     (*cycle) = 0;
                     break;
                 }
-                Memory::Read(AddressBus - 256);
+                Read(AddressBus - 256);
                 (*cycle)++;
                 break;
             }
             if(*cycle == 4)
             {
-                *valueToRewrite = Memory::Read(AddressBus);
+                *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
@@ -267,35 +267,35 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                Memory::Read(AddressBus);
-                AddressBus += CPU::X;
+                Read(AddressBus);
+                AddressBus += NES.CPU.X;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                temp = Memory::Read(AddressBus);
+                temp = Read(AddressBus);
                 AddressBus++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 4)
             {
-                temp |= ((Memory::Read(AddressBus)) << 8);
+                temp |= ((Read(AddressBus)) << 8);
                 AddressBus = temp;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 5)
             {
-                *valueToRewrite = Memory::Read(AddressBus);
+                *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
@@ -304,23 +304,23 @@ void Memory::Read(unsigned short address,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                temp = Memory::Read(AddressBus);
+                temp = Read(AddressBus);
                 AddressBus++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                temp |= (Memory::Read(AddressBus) << 8);
+                temp |= (Read(AddressBus) << 8);
                 AddressBus = temp;
-                if((AddressBus >> 8) != ((AddressBus + CPU::Y) >> 8))
+                if((AddressBus >> 8) != ((AddressBus + NES.CPU.Y) >> 8))
                 {
                     AddressCarry = true;
                 }
@@ -328,7 +328,7 @@ void Memory::Read(unsigned short address,
                 {
                     AddressCarry = false;
                 }
-                AddressBus += CPU::Y;
+                AddressBus += NES.CPU.Y;
                 (*cycle)++;
                 break;
             }
@@ -336,52 +336,52 @@ void Memory::Read(unsigned short address,
             {
                 if(!AddressCarry)
                 {
-                    *valueToRewrite = Memory::Read(AddressBus);
+                    *valueToRewrite = Read(AddressBus);
                     (*cycle) = 0;
                     break;
                 }
-                Memory::Read(AddressBus - 256);
+                Read(AddressBus - 256);
                 (*cycle)++;
                 break;
             }
             if(*cycle == 5)
             {
-                *valueToRewrite = Memory::Read(AddressBus);
+                *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
         }
     }
 }
-void Memory::Write(unsigned short address,
-                   unsigned char valueToWrite)
+void MemoryClass::Write(unsigned short address,
+                        unsigned char valueToWrite)
 {
     if(address < 0x2000)
     {
-        globals::InternalMemory[address % 0x800] = valueToWrite;
+        NES.InternalMemory[address % 0x800] = valueToWrite;
     }
     if((address >= 0x8000) && (address < 0xC000))
     {
-        globals::CartridgeMemory[address - 0x8000] = valueToWrite;
+        NES.CartridgeMemory[address - 0x8000] = valueToWrite;
     }
     if(address >= 0xC000)
     {
-        if(Memory::Mapper == 0)
+        if(this->Mapper == 0)
         {
             if(PRGROMSize == 16384)
             {
-                globals::CartridgeMemory[address - 0xC000] = valueToWrite;
+                NES.CartridgeMemory[address - 0xC000] = valueToWrite;
             }
             if(PRGROMSize == 32768)
             {
-                globals::CartridgeMemory[address - 0x8000] = valueToWrite;
+                NES.CartridgeMemory[address - 0x8000] = valueToWrite;
             }
         }
     }
 }
-void Memory::Write(unsigned char valueToWrite,
-                   unsigned char* cycle,
-                   unsigned char addrMode)
+void MemoryClass::Write(unsigned char valueToWrite,
+                        unsigned char* cycle,
+                        unsigned char addrMode)
 {
     switch(addrMode)
     {
@@ -392,14 +392,14 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                Memory::Write(AddressBus, valueToWrite);
+                Write(AddressBus, valueToWrite);
                 (*cycle) = 0;
                 break;
             }
@@ -408,22 +408,22 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
                 Read(AddressBus);
-                AddressBus += CPU::X;
+                AddressBus += NES.CPU.X;
                 AddressBus &= 255;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                Memory::Write(AddressBus, valueToWrite);
+                Write(AddressBus, valueToWrite);
                 (*cycle) = 0;
                 break;
             }
@@ -432,22 +432,22 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
                 Read(AddressBus);
-                AddressBus += CPU::Y;
+                AddressBus += NES.CPU.Y;
                 AddressBus &= 255;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                Memory::Write(AddressBus, valueToWrite);
+                Write(AddressBus, valueToWrite);
                 (*cycle) = 0;
                 break;
             }
@@ -456,21 +456,21 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
-                CPU::PCTemp++;
+                AddressBus |= (Read(NES.CPU.PCTemp) << 8);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                Memory::Write(AddressBus, valueToWrite);
+                Write(AddressBus, valueToWrite);
                 (*cycle) = 0;
                 break;
             }
@@ -479,28 +479,28 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
-                AddressBus += CPU::X;
-                CPU::PCTemp++;
+                AddressBus |= (Read(NES.CPU.PCTemp) << 8);
+                AddressBus += NES.CPU.X;
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                Memory::Read(AddressBus - 256);
+                Read(AddressBus - 256);
                 (*cycle)++;
                 break;
             }
             if(*cycle == 4)
             {
-                Memory::Write(AddressBus, valueToWrite);
+                Write(AddressBus, valueToWrite);
                 (*cycle) = 0;
                 break;
             }
@@ -509,28 +509,28 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                AddressBus |= (Memory::Read(CPU::PCTemp) << 8);
-                AddressBus += CPU::Y;
-                CPU::PCTemp++;
+                AddressBus |= (Read(NES.CPU.PCTemp) << 8);
+                AddressBus += NES.CPU.Y;
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                Memory::Read(AddressBus - 256);
+                Read(AddressBus - 256);
                 (*cycle)++;
                 break;
             }
             if(*cycle == 4)
             {
-                Memory::Write(AddressBus, valueToWrite);
+                Write(AddressBus, valueToWrite);
                 (*cycle) = 0;
                 break;
             }
@@ -539,35 +539,35 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                Memory::Read(AddressBus);
-                AddressBus += CPU::X;
+                Read(AddressBus);
+                AddressBus += NES.CPU.X;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                temp = Memory::Read(AddressBus);
+                temp = Read(AddressBus);
                 AddressBus++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 4)
             {
-                temp |= ((Memory::Read(AddressBus)) << 8);
+                temp |= ((Read(AddressBus)) << 8);
                 AddressBus = temp;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 5)
             {
-                Memory::Write(AddressBus, valueToWrite);
+                Write(AddressBus, valueToWrite);
                 (*cycle) = 0;
                 break;
             }
@@ -576,35 +576,35 @@ void Memory::Write(unsigned char valueToWrite,
         {
             if(*cycle == 1)
             {
-                AddressBus = Memory::Read(CPU::PCTemp);
-                CPU::PCTemp++;
+                AddressBus = Read(NES.CPU.PCTemp);
+                NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 2)
             {
-                temp = Memory::Read(AddressBus);
+                temp = Read(AddressBus);
                 AddressBus++;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 3)
             {
-                temp |= (Memory::Read(AddressBus) << 8);
+                temp |= (Read(AddressBus) << 8);
                 AddressBus = temp;
-                AddressBus += CPU::Y;
+                AddressBus += NES.CPU.Y;
                 (*cycle)++;
                 break;
             }
             if(*cycle == 4)
             {
-                Memory::Read(AddressBus - 256);
+                Read(AddressBus - 256);
                 (*cycle)++;
                 break;
             }
             if(*cycle == 5)
             {
-                Memory::Write(AddressBus, valueToWrite);
+                Write(AddressBus, valueToWrite);
                 (*cycle) = 0;
                 break;
             }

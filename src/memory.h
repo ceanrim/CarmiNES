@@ -19,14 +19,14 @@
 #define ADDR_ACCUMULATOR  0b00101000
 #define ADDR_RELATIVE     0b00101100
 #define ADDR_ABSOLUTE_IND 0b00110000
-class Memory
+class MemoryClass
 {
 private:
     unsigned short AddressBus; //To hold data between cycles
     unsigned short temp; //Need it for indexed indirect
     bool AddressCarry;
 public:
-    Memory();
+    MemoryClass();
     unsigned char Read(unsigned short); //Reads the memory
                                         //at the corresponding address
     unsigned char ReadWithNoSideEffects(unsigned short);

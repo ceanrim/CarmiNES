@@ -9,142 +9,137 @@
 #include "main.h"
 #include "cpu.h"
 #include "memory.h"
-namespace globals
+#include "nesclass.h"
+
+NESClass NES = NESClass();
+HANDLE LogFileHandle = INVALID_HANDLE_VALUE;
+HWND Window;
+HDC MainWindowDC;
+struct aaa
 {
-    Memory RAM = Memory();
-    int Region = PAL;
-    float Speed = 1;
-    bool Running;
-    HANDLE LogFileHandle = INVALID_HANDLE_VALUE;
-    HWND Window;
-    HDC MainWindowDC;
-    unsigned char *InternalMemory = NULL;
-    unsigned char *CartridgeMemory = NULL;
-    struct aaa
-    {
-        BITMAPINFO Info;
-        void *Memory;
-        int Width;
-        int Height;
-    };
-    aaa RenderBuffer {};
-    const char ToHex[] = {'0', '1', '2', '3',
-                          '4', '5', '6', '7',
-                          '8', '9', 'a', 'b',
-                          'c', 'd', 'e', 'f'};
-    const char *InstructionTable[] =
-    {"BRK", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO",
-     "PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL", "SLO",
-     "BPL", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO",
-     "CLC", "ORA", "NOP", "SLO", "NOP", "ORA", "ASL", "SLO",
-     "JSR", "AND", "KIL", "RLA", "BIT", "AND", "ROL", "RLA",
-     "PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL", "RLA",
-     "BMI", "AND", "KIL", "RLA", "NOP", "AND", "ROL", "RLA",
-     "SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL", "RLA",
-     "RTI", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE",
-     "PHA", "EOR", "LSR", "ASR", "JMP", "EOR", "LSR", "SRE",
-     "BVC", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE",
-     "CLI", "EOR", "NOP", "SRE", "NOP", "EOR", "LSR", "SRE",
-     "RTS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA",
-     "PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR", "RRA",
-     "BVS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA",
-     "SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR", "RRA",
-     "NOP", "STA", "NOP", "SAX", "STY", "STA", "STX", "SAX",
-     "DEY", "NOP", "TXA", "ANE", "STY", "STA", "STX", "SAX",
-     "BCC", "STA", "KIL", "SHA", "STY", "STA", "STX", "SAX",
-     "TYA", "STA", "TXS", "SHS", "SHY", "STA", "SHX", "SHA",
-     "LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX",
-     "TAY", "LDA", "TAX", "LXA", "LDY", "LDA", "LDX", "LAX",
-     "BCS", "LDA", "KIL", "LAX", "LDY", "LDA", "LDX", "LAX",
-     "CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX",
-     "CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP",
-     "INY", "CMP", "DEX", "SBX", "CPY", "CMP", "DEC", "DCP",
-     "BNE", "CMP", "KIL", "DCP", "NOP", "CMP", "DEC", "DCP",
-     "CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP",
-     "CPX", "SBC", "NOP", "ISB", "CPX", "SBC", "INC", "ISB",
-     "INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISB",
-     "BEQ", "SBC", "KIL", "ISB", "NOP", "SBC", "INC", "ISB",
-     "SED", "SBC", "NOP", "ISB", "NOP", "SBC", "INC", "ISB"};
-    const char InstrAddrModeTable[] =
-    {
-        ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
-        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
-        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
-        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
-        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
-        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
-        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
-        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+    BITMAPINFO Info;
+    void *Memory;
+    int Width;
+    int Height;
+};
+aaa RenderBuffer {};
+const char ToHex[] = {'0', '1', '2', '3',
+                      '4', '5', '6', '7',
+                      '8', '9', 'a', 'b',
+                      'c', 'd', 'e', 'f'};
+const char *InstructionTable[] =
+{"BRK", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO",
+ "PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL", "SLO",
+ "BPL", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO",
+ "CLC", "ORA", "NOP", "SLO", "NOP", "ORA", "ASL", "SLO",
+ "JSR", "AND", "KIL", "RLA", "BIT", "AND", "ROL", "RLA",
+ "PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL", "RLA",
+ "BMI", "AND", "KIL", "RLA", "NOP", "AND", "ROL", "RLA",
+ "SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL", "RLA",
+ "RTI", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE",
+ "PHA", "EOR", "LSR", "ASR", "JMP", "EOR", "LSR", "SRE",
+ "BVC", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE",
+ "CLI", "EOR", "NOP", "SRE", "NOP", "EOR", "LSR", "SRE",
+ "RTS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA",
+ "PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR", "RRA",
+ "BVS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA",
+ "SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR", "RRA",
+ "NOP", "STA", "NOP", "SAX", "STY", "STA", "STX", "SAX",
+ "DEY", "NOP", "TXA", "ANE", "STY", "STA", "STX", "SAX",
+ "BCC", "STA", "KIL", "SHA", "STY", "STA", "STX", "SAX",
+ "TYA", "STA", "TXS", "SHS", "SHY", "STA", "SHX", "SHA",
+ "LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX",
+ "TAY", "LDA", "TAX", "LXA", "LDY", "LDA", "LDX", "LAX",
+ "BCS", "LDA", "KIL", "LAX", "LDY", "LDA", "LDX", "LAX",
+ "CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX",
+ "CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP",
+ "INY", "CMP", "DEX", "SBX", "CPY", "CMP", "DEC", "DCP",
+ "BNE", "CMP", "KIL", "DCP", "NOP", "CMP", "DEC", "DCP",
+ "CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP",
+ "CPX", "SBC", "NOP", "ISB", "CPX", "SBC", "INC", "ISB",
+ "INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISB",
+ "BEQ", "SBC", "KIL", "ISB", "NOP", "SBC", "INC", "ISB",
+ "SED", "SBC", "NOP", "ISB", "NOP", "SBC", "INC", "ISB"};
+const char InstrAddrModeTable[] =
+{
+    ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+    ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+    ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
+    ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+    ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+    ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+    ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+    ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
 
-        ADDR_ABSOLUTE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
-        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
-        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
-        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
-        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
-        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
-        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
-        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+    ADDR_ABSOLUTE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+    ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+    ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
+    ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+    ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+    ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+    ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+    ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
 
-        ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
-        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
-        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
-        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
-        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
-        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
-        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
-        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+    ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+    ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+    ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
+    ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+    ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+    ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+    ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+    ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
 
-        ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
-        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
-        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
-        ADDR_ABSOLUTE_IND, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
-        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
-        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
-        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
-        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+    ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+    ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+    ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_ACCUMULATOR, ADDR_IMMEDIATE,
+    ADDR_ABSOLUTE_IND, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+    ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+    ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+    ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+    ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
 
-        ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
-        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
-        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
-        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
-        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
-        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_Y, ADDR_ZERO_PAGE_X,
-        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
-        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+    ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+    ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+    ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
+    ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+    ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+    ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_Y, ADDR_ZERO_PAGE_X,
+    ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+    ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
 
-        ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
-        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
-        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
-        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
-        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
-        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_Y, ADDR_ZERO_PAGE_X,
-        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
-        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_Y, ADDR_ABSOLUTE_X,
+    ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+    ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+    ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
+    ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+    ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+    ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_Y, ADDR_ZERO_PAGE_X,
+    ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+    ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_Y, ADDR_ABSOLUTE_X,
 
-        ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
-        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
-        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
-        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
-        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
-        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
-        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
-        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
+    ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+    ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+    ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
+    ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+    ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+    ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+    ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+    ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
 
-        ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
-        ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
-        ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
-        ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
-        ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
-        ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
-        ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
-        ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X
-    };
-    bool Pause = false;
-    bool Debugger = false;
-    HWND DebuggerHandle = 0;
-    bool IsAROMLoaded = false;
-}
-namespace Debugger
+    ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+    ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
+    ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
+    ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
+    ADDR_RELATIVE, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y, ADDR_INDIRECT_Y,
+    ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X, ADDR_ZERO_PAGE_X,
+    ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
+    ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X
+};
+bool Pause = false;
+bool Debugger = false;
+HWND DebuggerHandle = 0;
+bool IsAROMLoaded = false;
+
+namespace DebuggerSpace
 {
     unsigned short CurrentMemoryAddress = 0;
 }
@@ -168,7 +163,7 @@ bool TimeString(char *Out) /*Outputs the system time as a string.
 bool WriteToLog(char* Message) //Writes the message to the log file
 {
     DWORD MessageNumberOfBytesWritten = 0;
-    WriteFile(globals::LogFileHandle,
+    WriteFile(LogFileHandle,
               Message,
               strlen(Message),
               &MessageNumberOfBytesWritten,
@@ -186,7 +181,7 @@ bool Log(char *Message)
     char Time[9];
     TimeString(Time);
     DWORD TimeNumberOfBytesWritten = 0;
-    WriteFile(globals::LogFileHandle,
+    WriteFile(LogFileHandle,
               Time,
               8,
               &TimeNumberOfBytesWritten,
@@ -197,7 +192,7 @@ bool Log(char *Message)
     }
     char colon [2] = {':', ' '};
     DWORD ColonNumberOfBytesWritten = 0;
-    WriteFile(globals::LogFileHandle,
+    WriteFile(LogFileHandle,
               &colon,
               2,
               &ColonNumberOfBytesWritten,
@@ -207,7 +202,7 @@ bool Log(char *Message)
         return false;
     }
     DWORD MessageNumberOfBytesWritten = 0;
-    WriteFile(globals::LogFileHandle,
+    WriteFile(LogFileHandle,
               Message,
               strlen(Message),
               &MessageNumberOfBytesWritten,
@@ -218,7 +213,7 @@ bool Log(char *Message)
     }
     char *newLine = "\r\n";
     DWORD newLineNumberOfBytesWritten = 0;
-    WriteFile(globals::LogFileHandle,
+    WriteFile(LogFileHandle,
               newLine,
               2,
               &newLineNumberOfBytesWritten,
@@ -256,14 +251,14 @@ bool CreateLogFile()
     LogName[17] = 'x';
     LogName[18] = 't';
     LogName[19] =  0;
-    globals::LogFileHandle = CreateFile(LogName,
+    LogFileHandle = CreateFile(LogName,
                                         GENERIC_READ | GENERIC_WRITE,
                                         FILE_SHARE_READ | FILE_SHARE_WRITE,
                                         NULL,
                                         CREATE_NEW,
                                         FILE_ATTRIBUTE_NORMAL,
                                         NULL);
-    if(globals::LogFileHandle == INVALID_HANDLE_VALUE)
+    if(LogFileHandle == INVALID_HANDLE_VALUE)
     {
         return false;
     }
@@ -346,8 +341,8 @@ bool isValidHex(char *string, int length)
 
 void UchartoHex(unsigned char number, char* string, bool NullTerminated)
 {
-    string[0] = globals::ToHex[(number & 0b11110000) >> 4];
-    string[1] = globals::ToHex[number & 0b1111];
+    string[0] = ToHex[(number & 0b11110000) >> 4];
+    string[1] = ToHex[number & 0b1111];
     if(NullTerminated)
     {
         string[2] = 0;
@@ -356,10 +351,10 @@ void UchartoHex(unsigned char number, char* string, bool NullTerminated)
 
 void UshorttoHex(unsigned short number, char* string, bool NullTerminated)
 {
-    string[0] = globals::ToHex[(number & 0b1111000000000000) >> 12];
-    string[1] = globals::ToHex[(number & 0b111100000000) >> 8];
-    string[2] = globals::ToHex[(number & 0b11110000) >> 4];
-    string[3] = globals::ToHex[number & 0b1111];
+    string[0] = ToHex[(number & 0b1111000000000000) >> 12];
+    string[1] = ToHex[(number & 0b111100000000) >> 8];
+    string[2] = ToHex[(number & 0b11110000) >> 4];
+    string[3] = ToHex[number & 0b1111];
     if(NullTerminated)
     {
         string[4] = 0;
@@ -408,24 +403,24 @@ bool LoadROM(char *path)
         MessageBox(0, TEXT("Invalid NES file."), TEXT("Error"), MB_OK);
         return false;
     }
-    globals::RAM.Mapper = (FileMemoryChar[6] >> 4) | (FileMemoryChar[7] & 0xF0);
-    if(globals::RAM.Mapper != 0)
+    NES.RAM.Mapper = (FileMemoryChar[6] >> 4) | (FileMemoryChar[7] & 0xF0);
+    if(NES.RAM.Mapper != 0)
     {
         MessageBox(0, TEXT("Unsupported mapper."), TEXT("Error"), MB_OK);
         return false;
     }
-    globals::RAM.PRGROMSize = FileMemoryChar[4] << 14;
-    if((globals::RAM.PRGROMSize != 16384) && (globals::RAM.PRGROMSize != 32768))
+    NES.RAM.PRGROMSize = FileMemoryChar[4] << 14;
+    if((NES.RAM.PRGROMSize != 16384) && (NES.RAM.PRGROMSize != 32768))
     {
         MessageBox(0, TEXT("Mapper 0 file of size different from 16k or 32k."),
                    TEXT("Error"), MB_OK);
         return false;
     }
     unsigned char *PRGROM = FileMemoryChar + 16;
-    memcpy(globals::CartridgeMemory, PRGROM, globals::RAM.PRGROMSize);
+    memcpy(NES.CartridgeMemory, PRGROM, NES.RAM.PRGROMSize);
     CloseHandle(FileHandle);
-    globals::IsAROMLoaded = true;
-    CPU::Reset();
+    IsAROMLoaded = true;
+    NES.CPU.Reset();
     return true;
 }
 
@@ -459,14 +454,14 @@ LRESULT CALLBACK AboutDlgProc
 
 void TestRender(int a)
 {
-    unsigned *Row = (unsigned *)globals::RenderBuffer.Memory;
+    unsigned *Row = (unsigned *)RenderBuffer.Memory;
     for(int y = 0;
-        y < globals::RenderBuffer.Height;
+        y < RenderBuffer.Height;
         y++)
     {
         unsigned *Pixel = (unsigned *)Row;
         for(int x = 0;
-            x < globals::RenderBuffer.Width;
+            x < RenderBuffer.Width;
             x++)
         {
             if(y < 100 & x < 100)
@@ -486,14 +481,14 @@ void TestRender(int a)
             }
             Pixel++;
         }
-        Row += globals::RenderBuffer.Width;
+        Row += RenderBuffer.Width;
     }
 }
 
 void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
 {
     unsigned a = 0;
-    unsigned short b = CPU::PC;
+    unsigned short b = NES.CPU.PC;
     char* string =
         (char *)VirtualAlloc(0, 2048, MEM_COMMIT, PAGE_READWRITE);
     memset((void *)string, 0, 2048);
@@ -502,12 +497,12 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
         UshorttoHex(b, string+a, false);
         string[a += 4] = ' ';
         a++;
-        unsigned char Instruction = globals::RAM.ReadWithNoSideEffects(b);
+        unsigned char Instruction = NES.RAM.ReadWithNoSideEffects(b);
         void const *InstructionString =
-            (void const *)globals::InstructionTable[Instruction];
+            (void const *)InstructionTable[Instruction];
         memcpy((void *)&(string[a]), InstructionString, 4);
         a += 3;
-        switch(globals::InstrAddrModeTable[Instruction])
+        switch(InstrAddrModeTable[Instruction])
         {
             case ADDR_IMPLIED:
             {
@@ -522,7 +517,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 a++;
                 string[a] = '#';
                 a++;
-                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(NES.RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a+=2;
                 string[a] = '\n';
                 a++;
@@ -533,7 +528,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(NES.RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a+=2;
                 string[a] = '\n';
                 a++;
@@ -544,7 +539,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(NES.RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a+=2;
                 string[a] = '+';
                 a++;
@@ -559,7 +554,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(NES.RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a+=2;
                 string[a] = '+';
                 a++;
@@ -574,8 +569,8 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                unsigned short c = globals::RAM.ReadWithNoSideEffects(b+1);
-                c |= (globals::RAM.ReadWithNoSideEffects(b+2) << 8);
+                unsigned short c = NES.RAM.ReadWithNoSideEffects(b+1);
+                c |= (NES.RAM.ReadWithNoSideEffects(b+2) << 8);
                 UshorttoHex(c, string+a, false);
                 a += 4;
                 string[a] = '\n';
@@ -589,8 +584,8 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 a++;
                 string[a] = '(';
                 a++;
-                unsigned short c = globals::RAM.ReadWithNoSideEffects(b+1);
-                c |= (globals::RAM.ReadWithNoSideEffects(b+2) << 8);
+                unsigned short c = NES.RAM.ReadWithNoSideEffects(b+1);
+                c |= (NES.RAM.ReadWithNoSideEffects(b+2) << 8);
                 UshorttoHex(c, string+a, false);
                 a+=4;
                 string[a] = ')';
@@ -604,8 +599,8 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                unsigned short c = globals::RAM.ReadWithNoSideEffects(b+1);
-                c |= (globals::RAM.ReadWithNoSideEffects(b+2) << 8);
+                unsigned short c = NES.RAM.ReadWithNoSideEffects(b+1);
+                c |= (NES.RAM.ReadWithNoSideEffects(b+2) << 8);
                 UshorttoHex(c, string+a, false);
                 a += 4;
                 string[a] = '+';
@@ -621,8 +616,8 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                unsigned short c = globals::RAM.ReadWithNoSideEffects(b+1);
-                c |= (globals::RAM.ReadWithNoSideEffects(b+2) << 8);
+                unsigned short c = NES.RAM.ReadWithNoSideEffects(b+1);
+                c |= (NES.RAM.ReadWithNoSideEffects(b+2) << 8);
                 UshorttoHex(c, string+a, false);
                 a += 4;
                 string[a] = '+';
@@ -640,7 +635,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 a++;
                 string[a] = '(';
                 a++;
-                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(NES.RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a += 2;
                 string[a] = '+';
                 a++;
@@ -659,7 +654,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 a++;
                 string[a] = '(';
                 a++;
-                UchartoHex(globals::RAM.ReadWithNoSideEffects(b+1), string+a, false);
+                UchartoHex(NES.RAM.ReadWithNoSideEffects(b+1), string+a, false);
                 a += 2;
                 string[a] = ')';
                 a++;
@@ -686,7 +681,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
             {
                 string[a] = ' ';
                 a++;
-                unsigned short b_ = b + (char)globals::RAM.ReadWithNoSideEffects(b+1) + 2;
+                unsigned short b_ = b + (char)NES.RAM.ReadWithNoSideEffects(b+1) + 2;
                 UshorttoHex(b_, string+a, false);
                 a += 4;
                 string[a] = '\n';
@@ -718,7 +713,7 @@ void ShowMemory(HWND hWnd, int Control, unsigned short Address)
         {
             string[k] = ' ';
             k++;
-            UchartoHex(globals::RAM.ReadWithNoSideEffects(Address+i), string+k, false);
+            UchartoHex(NES.RAM.ReadWithNoSideEffects(Address+i), string+k, false);
             k += 2;
         }
         string[k] = '\r';
@@ -738,19 +733,19 @@ void ShowRegisters(HWND hWnd, int AControl, int XControl, int YControl,
     string[0] = 'A';
     string[1] = ':';
     string[2] = ' ';
-    UchartoHex(CPU::A, string+3, false);
+    UchartoHex(NES.CPU.A, string+3, false);
     SetDlgItemText(hWnd, AControl, string);
     string[0] = 'X';
-    UchartoHex(CPU::X, string+3, false);
+    UchartoHex(NES.CPU.X, string+3, false);
     SetDlgItemText(hWnd, XControl, string);
     string[0] = 'Y';
-    UchartoHex(CPU::Y, string+3, false);
+    UchartoHex(NES.CPU.Y, string+3, false);
     SetDlgItemText(hWnd, YControl, string);
     string[0] = 'S';
-    UchartoHex(CPU::S, string+3, false);
+    UchartoHex(NES.CPU.S, string+3, false);
     SetDlgItemText(hWnd, SControl, string);
     string[0] = 'P';
-    UchartoHex(CPU::P, string+3, false);
+    UchartoHex(NES.CPU.P, string+3, false);
     SetDlgItemText(hWnd, PControl, string);
 }
 
@@ -776,15 +771,15 @@ LRESULT CALLBACK DebuggerProc
                                BM_SETIMAGE, IMAGE_ICON, (LPARAM)ArrowUpIcon);
             SendDlgItemMessage(hWnd, IDC_ARROWDOWN,
                                BM_SETIMAGE, IMAGE_ICON, (LPARAM)ArrowDownIcon);
-            ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
+            ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
             return TRUE;
         }
         case WM_CLOSE:
         case WM_DESTROY:
         {
             DestroyWindow(hWnd);
-            globals::DebuggerHandle = 0;
-            globals::Debugger = false;
+            DebuggerHandle = 0;
+            Debugger = false;
             return TRUE;
         }
         case WM_COMMAND:
@@ -793,56 +788,56 @@ LRESULT CALLBACK DebuggerProc
             {
                 case IDC_ARROWUP:
                 {
-                    Debugger::CurrentMemoryAddress -= 16;
+                    DebuggerSpace::CurrentMemoryAddress -= 16;
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               Debugger::CurrentMemoryAddress);
+                               DebuggerSpace::CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
                 }
                 case IDC_ARROWDOWN:
                 {
-                    Debugger::CurrentMemoryAddress += 16;
+                    DebuggerSpace::CurrentMemoryAddress += 16;
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               Debugger::CurrentMemoryAddress);
+                               DebuggerSpace::CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
                 }
                 case IDC_REFRESH:
                 {
-                    ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
+                    ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
                     char EditText[5];
                     GetDlgItemText(hWnd, IDC_EDIT1, EditText, 5);
                     toUpper(EditText, 4);
                     if(isValidHex(EditText, 4))
                     {
-                        Debugger::CurrentMemoryAddress = HextoUshort(EditText);
+                        DebuggerSpace::CurrentMemoryAddress = HextoUshort(EditText);
                     }
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               Debugger::CurrentMemoryAddress);
+                               DebuggerSpace::CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
                 }
                 case IDC_CYCLE:
                 {
-                    if(CPU::InstructionCycle == 0)
+                    if(NES.CPU.InstructionCycle == 0)
                     {
-                        CPU::PC = CPU::PCTemp;
-                        CPU::CurrentInstruction = globals::RAM.Read(CPU::PCTemp);
-                        CPU::InstructionCycle++;
-                        CPU::CurrentCycle++;
-                        ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
-                        CPU::PCTemp++;
+                        NES.CPU.PC = NES.CPU.PCTemp;
+                        NES.CPU.CurrentInstruction = NES.RAM.Read(NES.CPU.PCTemp);
+                        NES.CPU.InstructionCycle++;
+                        NES.CPU.CurrentCycle++;
+                        ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
+                        NES.CPU.PCTemp++;
                     }
                     else
                     {
-                        CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
-                        CPU::CurrentCycle++;
+                        NES.CPU.RunCycle(NES.CPU.CurrentInstruction, NES.CPU.InstructionCycle);
+                        NES.CPU.CurrentCycle++;
                     }
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               Debugger::CurrentMemoryAddress);
+                               DebuggerSpace::CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
@@ -851,23 +846,23 @@ LRESULT CALLBACK DebuggerProc
                 {
                     do
                     {
-                        if(CPU::InstructionCycle == 0)
+                        if(NES.CPU.InstructionCycle == 0)
                         {
-                            CPU::PC = CPU::PCTemp;
-                            CPU::CurrentInstruction = globals::RAM.Read(CPU::PCTemp);
-                            CPU::InstructionCycle++;
-                            CPU::CurrentCycle++;
-                            ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, CPU::PC);
-                            CPU::PCTemp++;
+                            NES.CPU.PC = NES.CPU.PCTemp;
+                            NES.CPU.CurrentInstruction = NES.RAM.Read(NES.CPU.PCTemp);
+                            NES.CPU.InstructionCycle++;
+                            NES.CPU.CurrentCycle++;
+                            ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
+                            NES.CPU.PCTemp++;
                         }
                         else
                         {
-                            CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
-                            CPU::CurrentCycle++;
+                            NES.CPU.RunCycle(NES.CPU.CurrentInstruction, NES.CPU.InstructionCycle);
+                            NES.CPU.CurrentCycle++;
                         }
-                    } while(CPU::InstructionCycle != 0);
+                    } while(NES.CPU.InstructionCycle != 0);
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               Debugger::CurrentMemoryAddress);
+                               DebuggerSpace::CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
@@ -923,69 +918,69 @@ LRESULT CALLBACK MainWindowCallback
                 }
                 case ID_FILE_EXIT:
                 {
-                    globals::Running = false;
+                    NES.Running = false;
                     return 0;
                 }
                 case ID_REGION_PAL:
                 {
-                    if(globals::Region == PAL)
+                    if(NES.Region == PAL)
                     {
                         return 0;
                     }
-                    globals::Region = PAL;
+                    NES.Region = PAL;
                     CheckMenuItem(GetMenu(hWnd), ID_REGION_NTSC, MF_UNCHECKED);
                     CheckMenuItem(GetMenu(hWnd), ID_REGION_PAL,  MF_CHECKED);
                     return 0;
                 }
                 case ID_REGION_NTSC:
                 {
-                    if(globals::Region == NTSC)
+                    if(NES.Region == NTSC)
                     {
                         return 0;
                     }
-                    globals::Region = NTSC;
+                    NES.Region = NTSC;
                     CheckMenuItem(GetMenu(hWnd), ID_REGION_PAL,  MF_UNCHECKED);
                     CheckMenuItem(GetMenu(hWnd), ID_REGION_NTSC, MF_CHECKED);
                     return 0;
                 }
                 case ID_SPEED_0:
                 {
-                    globals::Speed = 0.125f;
+                    NES.Speed = 0.125f;
                     goto IDSpeedALL;
                 }
                 case ID_SPEED_1:
                 {
-                    globals::Speed = 0.25f;
+                    NES.Speed = 0.25f;
                     goto IDSpeedALL;
                 }
                 case ID_SPEED_2:
                 {
-                    globals::Speed = 0.5f;
+                    NES.Speed = 0.5f;
                     goto IDSpeedALL;
                 }
                 case ID_SPEED_3:
                 {
-                    globals::Speed = 0.75f;
+                    NES.Speed = 0.75f;
                     goto IDSpeedALL;
                 }
                 case ID_SPEED_5:
                 {
-                    globals::Speed = 1.5f;
+                    NES.Speed = 1.5f;
                     goto IDSpeedALL;
                 }
                 case ID_SPEED_1X:
                 {
-                    globals::Speed = 1.f;
+                    NES.Speed = 1.f;
                     goto IDSpeedALL;
                 }
                 case ID_SPEED_2X:
                 {
-                    globals::Speed = 2.f;
+                    NES.Speed = 2.f;
                     goto IDSpeedALL;
                 }
                 case ID_SPEED_4X:
                 {
-                    globals::Speed = 4.f;
+                    NES.Speed = 4.f;
                     goto IDSpeedALL;
                 }
                 IDSpeedALL:
@@ -1008,28 +1003,28 @@ LRESULT CALLBACK MainWindowCallback
                 }
                 case ID_EMULATOR_PAUSE:
                 {
-                    globals::Pause = !globals::Pause;
+                    Pause = !Pause;
                     CheckMenuItem(GetMenu(hWnd), ID_EMULATOR_PAUSE,
-                                  globals::Pause?MF_CHECKED:MF_UNCHECKED);
+                                  Pause?MF_CHECKED:MF_UNCHECKED);
                     return 0;
                 }
                 case ID_EMULATOR_RESET:
                 {
-                    CPU::Reset();
+                    NES.CPU.Reset();
                     break;
                 }
                 case ID_TOOLS_DEBUGGER:
                 {
-                    if(!globals::Debugger)
+                    if(!Debugger)
                     {
-                        globals::DebuggerHandle =
+                        DebuggerHandle =
                             CreateDialog(GetModuleHandle(NULL),
                                          MAKEINTRESOURCE(IDD_DEBUGGER),
                                          hWnd, DebuggerProc);
-                        if(globals::DebuggerHandle)
+                        if(DebuggerHandle)
                         {
-                            ShowWindow(globals::DebuggerHandle, SW_SHOW);
-                            globals::Debugger = true;
+                            ShowWindow(DebuggerHandle, SW_SHOW);
+                            Debugger = true;
                         }
                     }
                     return 0;
@@ -1045,22 +1040,22 @@ LRESULT CALLBACK MainWindowCallback
         case WM_DESTROY:
         case WM_QUIT:
         {
-            globals::Running = false;
+            NES.Running = false;
             return 0;
             break;
         }
         case WM_PAINT:
         {
-            TestRender(globals::Debugger);
+            TestRender(Debugger);
             RECT ClientRect;
-            GetClientRect(globals::Window, &ClientRect);
-            StretchDIBits(globals::MainWindowDC,
+            GetClientRect(Window, &ClientRect);
+            StretchDIBits(MainWindowDC,
                           0, 0,
                           ClientRect.right  - ClientRect.left,
                           ClientRect.bottom - ClientRect.top,
                           0, 0,
-                          globals::RenderBuffer.Width, globals::RenderBuffer.Height,
-                          globals::RenderBuffer.Memory, &globals::RenderBuffer.Info,
+                          RenderBuffer.Width, RenderBuffer.Height,
+                          RenderBuffer.Memory, &RenderBuffer.Info,
                           DIB_RGB_COLORS, SRCCOPY);
             return DefWindowProc(hWnd, uMsg, wParam, lParam);
             break;
@@ -1078,23 +1073,18 @@ int CALLBACK WinMain
  LPSTR     lpCmdLine,
  int       nCmdShow)
 {
-    //Initialise globals
-    globals::Region = PAL;
-    globals::Speed = 1;
-    globals::Running = true;
-    globals::LogFileHandle = INVALID_HANDLE_VALUE;
-    globals::InternalMemory = NULL;
-    globals::CartridgeMemory = NULL;
-    globals::RenderBuffer.Width                        = 1280;
-    globals::RenderBuffer.Height                       = 720;
-    globals::RenderBuffer.Info.bmiHeader.biSize        =
-        sizeof(globals::RenderBuffer.Info.bmiHeader);
-    globals::RenderBuffer.Info.bmiHeader.biWidth       = 1280;
-    globals::RenderBuffer.Info.bmiHeader.biHeight      = -720;
-    globals::RenderBuffer.Info.bmiHeader.biPlanes      = 1;
-    globals::RenderBuffer.Info.bmiHeader.biBitCount    = 32;
-    globals::RenderBuffer.Info.bmiHeader.biCompression = BI_RGB;
-    globals::RenderBuffer.Memory =
+    NES = NESClass();
+    LogFileHandle = INVALID_HANDLE_VALUE;
+    RenderBuffer.Width                        = 1280;
+    RenderBuffer.Height                       = 720;
+    RenderBuffer.Info.bmiHeader.biSize        =
+        sizeof(RenderBuffer.Info.bmiHeader);
+    RenderBuffer.Info.bmiHeader.biWidth       = 1280;
+    RenderBuffer.Info.bmiHeader.biHeight      = -720;
+    RenderBuffer.Info.bmiHeader.biPlanes      = 1;
+    RenderBuffer.Info.bmiHeader.biBitCount    = 32;
+    RenderBuffer.Info.bmiHeader.biCompression = BI_RGB;
+    RenderBuffer.Memory =
         VirtualAlloc(0, 4 * 720 * 1280, MEM_COMMIT, PAGE_READWRITE);
     
     if(!CreateLogFile())
@@ -1102,23 +1092,13 @@ int CALLBACK WinMain
         //Nothing to write the log to, so we just close
         return 1;
     }
+
+    NES.InternalMemory =
+        (unsigned char*)(VirtualAlloc(0, 2048, MEM_COMMIT, PAGE_READWRITE));
+    memset(NES.InternalMemory, 0, 256);
+    NES.CartridgeMemory =
+        (unsigned char*)(VirtualAlloc(0, 32768, MEM_COMMIT, PAGE_READWRITE));
     
-    globals::InternalMemory =
-        (unsigned char *)(VirtualAlloc(0, 2048, MEM_COMMIT, PAGE_READWRITE));
-    globals::CartridgeMemory =
-        (unsigned char *)(VirtualAlloc(0, 32768, MEM_COMMIT, PAGE_READWRITE));
-    if(globals::InternalMemory == NULL || globals::CartridgeMemory == NULL)
-    {
-        Log("Aborting. Couldn't allocate space for internal memory.");
-        return 1;
-    }
-    for(int i = 0; i < 2048; i++)
-    {
-        globals::InternalMemory[i] = (unsigned char)0;
-    }
-
-    Log("Allocated internal memory.");
-
     WNDCLASS WindowClass {};
     WindowClass.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     WindowClass.lpfnWndProc   = MainWindowCallback;
@@ -1131,7 +1111,7 @@ int CALLBACK WinMain
     WindowClass.lpszMenuName  = MAKEINTRESOURCE(IDR_MENU1);
     WindowClass.lpszClassName = "CarmiNESWindowClass";
     RegisterClass(&WindowClass);
-    globals::Window = CreateWindow("CarmiNESWindowClass",
+    Window = CreateWindow("CarmiNESWindowClass",
                                    "CarmiNES",
                                    WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                                    CW_USEDEFAULT,
@@ -1142,7 +1122,7 @@ int CALLBACK WinMain
                                    NULL,
                                    hInstance,
                                    NULL);
-    if(!globals::Window)
+    if(!Window)
     {
         int a = GetLastError();
         Log("Aborting. Couldn't create window.");
@@ -1151,18 +1131,18 @@ int CALLBACK WinMain
 
     Log("Created window.");
         
-    CheckMenuItem(GetMenu(globals::Window), ID_SPEED_1X, MF_CHECKED);
-    CheckMenuItem(GetMenu(globals::Window), ID_REGION_PAL, MF_CHECKED);
+    CheckMenuItem(GetMenu(Window), ID_SPEED_1X, MF_CHECKED);
+    CheckMenuItem(GetMenu(Window), ID_REGION_PAL, MF_CHECKED);
     unsigned nOfFrames = 0;
-    globals::MainWindowDC = GetDC(globals::Window);
-    while(globals::Running) //Every iteration of this loop is a frame
+    MainWindowDC = GetDC(Window);
+    while(NES.Running) //Every iteration of this loop is a frame
     {
         MSG Message;
         while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
-            if(globals::DebuggerHandle != 0)
+            if(DebuggerHandle != 0)
             {
-                if(!IsDialogMessage(globals::DebuggerHandle, &Message))
+                if(!IsDialogMessage(DebuggerHandle, &Message))
                 {
                     TranslateMessage(&Message);
                     DispatchMessage(&Message);
@@ -1174,7 +1154,7 @@ int CALLBACK WinMain
                 DispatchMessage(&Message);
             }
         }
-        if(globals::Pause || !globals::IsAROMLoaded || globals::Debugger)
+        if(Pause || !IsAROMLoaded || Debugger)
         {
             timeBeginPeriod(1);
             Sleep(33);
@@ -1185,37 +1165,37 @@ int CALLBACK WinMain
             //HERE LIETH THE CPU LOOP:
             while(true)
             {
-                if(CPU::CurrentCycle ==                                                        /*The frame is over,    */
-                   NTSC_CYCLE_COUNT+((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region))    /*we pass on to the next*/
+                if(NES.CPU.CurrentCycle ==                                                        /*The frame is over,    */
+                   NTSC_CYCLE_COUNT+((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*NES.Region))    /*we pass on to the next*/
                 {
-                    CPU::CurrentCycle -=
+                    NES.CPU.CurrentCycle -=
                         (NTSC_CYCLE_COUNT+
-                         ((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*globals::Region));
+                         ((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*NES.Region));
                     break;
                 }
-                if(CPU::InstructionCycle == 0) //We fetch a new instruction
+                if(NES.CPU.InstructionCycle == 0) //We fetch a new instruction
                 {
-                    CPU::PC = CPU::PCTemp;
-                    CPU::CurrentInstruction = globals::RAM.Read(CPU::PC);
-                    CPU::InstructionCycle++;
-                    CPU::CurrentCycle++;
-                    CPU::PCTemp++;
+                    NES.CPU.PC = NES.CPU.PCTemp;
+                    NES.CPU.CurrentInstruction = NES.RAM.Read(NES.CPU.PC);
+                    NES.CPU.InstructionCycle++;
+                    NES.CPU.CurrentCycle++;
+                    NES.CPU.PCTemp++;
                     continue;
                 }
-                CPU::RunCycle(CPU::CurrentInstruction, CPU::InstructionCycle);
-                CPU::CurrentCycle++; /*A new cycle starts*/
+                NES.CPU.RunCycle(NES.CPU.CurrentInstruction, NES.CPU.InstructionCycle);
+                NES.CPU.CurrentCycle++; /*A new cycle starts*/
             }
         }
-        TestRender(globals::Debugger?1:0);
+        TestRender(Debugger?1:0);
         RECT ClientRect;
-        GetClientRect(globals::Window, &ClientRect);
-        StretchDIBits(globals::MainWindowDC,
+        GetClientRect(Window, &ClientRect);
+        StretchDIBits(MainWindowDC,
                       0, 0,
                       ClientRect.right  - ClientRect.left,
                       ClientRect.bottom - ClientRect.top,
                       0, 0,
-                      globals::RenderBuffer.Width, globals::RenderBuffer.Height,
-                      globals::RenderBuffer.Memory, &globals::RenderBuffer.Info,
+                      RenderBuffer.Width, RenderBuffer.Height,
+                      RenderBuffer.Memory, &RenderBuffer.Info,
                       DIB_RGB_COLORS, SRCCOPY);
         nOfFrames++;
     }
@@ -1224,7 +1204,7 @@ quit:
     UnsignedtoString(nOfFrames, nOfFramesInString);
     Log(nOfFramesInString);
     Log("Quitting.");
-    CloseHandle(globals::LogFileHandle);
+    CloseHandle(LogFileHandle);
     return 0;
 }
 void WinMainCRTStartup()
