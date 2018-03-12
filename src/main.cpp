@@ -10,19 +10,10 @@
 #include "cpu.h"
 #include "memory.h"
 #include "nesclass.h"
+#include "debuggerclass.h"
 
 NESClass NES = NESClass();
-HANDLE LogFileHandle = INVALID_HANDLE_VALUE;
-HWND Window;
-HDC MainWindowDC;
-struct aaa
-{
-    BITMAPINFO Info;
-    void *Memory;
-    int Width;
-    int Height;
-};
-aaa RenderBuffer {};
+
 const char ToHex[] = {'0', '1', '2', '3',
                       '4', '5', '6', '7',
                       '8', '9', 'a', 'b',
@@ -134,15 +125,8 @@ const char InstrAddrModeTable[] =
     ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
     ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X
 };
-bool Pause = false;
-bool Debugger = false;
-HWND DebuggerHandle = 0;
 bool IsAROMLoaded = false;
 
-namespace DebuggerSpace
-{
-    unsigned short CurrentMemoryAddress = 0;
-}
 bool TimeString(char *Out) /*Outputs the system time as a string.
                             *Argument needs to be 9 bytes*/
 {
@@ -163,7 +147,7 @@ bool TimeString(char *Out) /*Outputs the system time as a string.
 bool WriteToLog(char* Message) //Writes the message to the log file
 {
     DWORD MessageNumberOfBytesWritten = 0;
-    WriteFile(LogFileHandle,
+    WriteFile(NES.LogFileHandle,
               Message,
               strlen(Message),
               &MessageNumberOfBytesWritten,
@@ -181,7 +165,7 @@ bool Log(char *Message)
     char Time[9];
     TimeString(Time);
     DWORD TimeNumberOfBytesWritten = 0;
-    WriteFile(LogFileHandle,
+    WriteFile(NES.LogFileHandle,
               Time,
               8,
               &TimeNumberOfBytesWritten,
@@ -192,7 +176,7 @@ bool Log(char *Message)
     }
     char colon [2] = {':', ' '};
     DWORD ColonNumberOfBytesWritten = 0;
-    WriteFile(LogFileHandle,
+    WriteFile(NES.LogFileHandle,
               &colon,
               2,
               &ColonNumberOfBytesWritten,
@@ -202,7 +186,7 @@ bool Log(char *Message)
         return false;
     }
     DWORD MessageNumberOfBytesWritten = 0;
-    WriteFile(LogFileHandle,
+    WriteFile(NES.LogFileHandle,
               Message,
               strlen(Message),
               &MessageNumberOfBytesWritten,
@@ -213,7 +197,7 @@ bool Log(char *Message)
     }
     char *newLine = "\r\n";
     DWORD newLineNumberOfBytesWritten = 0;
-    WriteFile(LogFileHandle,
+    WriteFile(NES.LogFileHandle,
               newLine,
               2,
               &newLineNumberOfBytesWritten,
@@ -251,14 +235,14 @@ bool CreateLogFile()
     LogName[17] = 'x';
     LogName[18] = 't';
     LogName[19] =  0;
-    LogFileHandle = CreateFile(LogName,
+    NES.LogFileHandle = CreateFile(LogName,
                                         GENERIC_READ | GENERIC_WRITE,
                                         FILE_SHARE_READ | FILE_SHARE_WRITE,
                                         NULL,
                                         CREATE_NEW,
                                         FILE_ATTRIBUTE_NORMAL,
                                         NULL);
-    if(LogFileHandle == INVALID_HANDLE_VALUE)
+    if(NES.LogFileHandle == INVALID_HANDLE_VALUE)
     {
         return false;
     }
@@ -454,14 +438,14 @@ LRESULT CALLBACK AboutDlgProc
 
 void TestRender(int a)
 {
-    unsigned *Row = (unsigned *)RenderBuffer.Memory;
+    unsigned *Row = (unsigned *)NES.RenderBuffer.Memory;
     for(int y = 0;
-        y < RenderBuffer.Height;
+        y < NES.RenderBuffer.Height;
         y++)
     {
         unsigned *Pixel = (unsigned *)Row;
         for(int x = 0;
-            x < RenderBuffer.Width;
+            x < NES.RenderBuffer.Width;
             x++)
         {
             if(y < 100 & x < 100)
@@ -481,7 +465,7 @@ void TestRender(int a)
             }
             Pixel++;
         }
-        Row += RenderBuffer.Width;
+        Row += NES.RenderBuffer.Width;
     }
 }
 
@@ -778,8 +762,8 @@ LRESULT CALLBACK DebuggerProc
         case WM_DESTROY:
         {
             DestroyWindow(hWnd);
-            DebuggerHandle = 0;
-            Debugger = false;
+            NES.Debugger.DebuggerHandle = 0;
+            NES.Debugger.isDebuggerActive = false;
             return TRUE;
         }
         case WM_COMMAND:
@@ -788,18 +772,18 @@ LRESULT CALLBACK DebuggerProc
             {
                 case IDC_ARROWUP:
                 {
-                    DebuggerSpace::CurrentMemoryAddress -= 16;
+                    NES.Debugger.CurrentMemoryAddress -= 16;
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               DebuggerSpace::CurrentMemoryAddress);
+                               NES.Debugger.CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
                 }
                 case IDC_ARROWDOWN:
                 {
-                    DebuggerSpace::CurrentMemoryAddress += 16;
+                    NES.Debugger.CurrentMemoryAddress += 16;
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               DebuggerSpace::CurrentMemoryAddress);
+                               NES.Debugger.CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
@@ -812,10 +796,10 @@ LRESULT CALLBACK DebuggerProc
                     toUpper(EditText, 4);
                     if(isValidHex(EditText, 4))
                     {
-                        DebuggerSpace::CurrentMemoryAddress = HextoUshort(EditText);
+                        NES.Debugger.CurrentMemoryAddress = HextoUshort(EditText);
                     }
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               DebuggerSpace::CurrentMemoryAddress);
+                               NES.Debugger.CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
@@ -837,7 +821,7 @@ LRESULT CALLBACK DebuggerProc
                         NES.CPU.CurrentCycle++;
                     }
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               DebuggerSpace::CurrentMemoryAddress);
+                               NES.Debugger.CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
@@ -862,7 +846,7 @@ LRESULT CALLBACK DebuggerProc
                         }
                     } while(NES.CPU.InstructionCycle != 0);
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               DebuggerSpace::CurrentMemoryAddress);
+                               NES.Debugger.CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
@@ -1003,9 +987,9 @@ LRESULT CALLBACK MainWindowCallback
                 }
                 case ID_EMULATOR_PAUSE:
                 {
-                    Pause = !Pause;
+                    NES.Pause = !NES.Pause;
                     CheckMenuItem(GetMenu(hWnd), ID_EMULATOR_PAUSE,
-                                  Pause?MF_CHECKED:MF_UNCHECKED);
+                                  NES.Pause?MF_CHECKED:MF_UNCHECKED);
                     return 0;
                 }
                 case ID_EMULATOR_RESET:
@@ -1015,16 +999,16 @@ LRESULT CALLBACK MainWindowCallback
                 }
                 case ID_TOOLS_DEBUGGER:
                 {
-                    if(!Debugger)
+                    if(!NES.Debugger.isDebuggerActive)
                     {
-                        DebuggerHandle =
+                        NES.Debugger.DebuggerHandle =
                             CreateDialog(GetModuleHandle(NULL),
                                          MAKEINTRESOURCE(IDD_DEBUGGER),
                                          hWnd, DebuggerProc);
-                        if(DebuggerHandle)
+                        if(NES.Debugger.DebuggerHandle)
                         {
-                            ShowWindow(DebuggerHandle, SW_SHOW);
-                            Debugger = true;
+                            ShowWindow(NES.Debugger.DebuggerHandle, SW_SHOW);
+                            NES.Debugger.isDebuggerActive = true;
                         }
                     }
                     return 0;
@@ -1046,16 +1030,16 @@ LRESULT CALLBACK MainWindowCallback
         }
         case WM_PAINT:
         {
-            TestRender(Debugger);
+            TestRender(NES.Debugger.isDebuggerActive);
             RECT ClientRect;
-            GetClientRect(Window, &ClientRect);
-            StretchDIBits(MainWindowDC,
+            GetClientRect(NES.Window, &ClientRect);
+            StretchDIBits(NES.MainWindowDC,
                           0, 0,
                           ClientRect.right  - ClientRect.left,
                           ClientRect.bottom - ClientRect.top,
                           0, 0,
-                          RenderBuffer.Width, RenderBuffer.Height,
-                          RenderBuffer.Memory, &RenderBuffer.Info,
+                          NES.RenderBuffer.Width, NES.RenderBuffer.Height,
+                          NES.RenderBuffer.Memory, &NES.RenderBuffer.Info,
                           DIB_RGB_COLORS, SRCCOPY);
             return DefWindowProc(hWnd, uMsg, wParam, lParam);
             break;
@@ -1074,17 +1058,17 @@ int CALLBACK WinMain
  int       nCmdShow)
 {
     NES = NESClass();
-    LogFileHandle = INVALID_HANDLE_VALUE;
-    RenderBuffer.Width                        = 1280;
-    RenderBuffer.Height                       = 720;
-    RenderBuffer.Info.bmiHeader.biSize        =
-        sizeof(RenderBuffer.Info.bmiHeader);
-    RenderBuffer.Info.bmiHeader.biWidth       = 1280;
-    RenderBuffer.Info.bmiHeader.biHeight      = -720;
-    RenderBuffer.Info.bmiHeader.biPlanes      = 1;
-    RenderBuffer.Info.bmiHeader.biBitCount    = 32;
-    RenderBuffer.Info.bmiHeader.biCompression = BI_RGB;
-    RenderBuffer.Memory =
+    NES.LogFileHandle = INVALID_HANDLE_VALUE;
+    NES.RenderBuffer.Width                        = 1280;
+    NES.RenderBuffer.Height                       = 720;
+    NES.RenderBuffer.Info.bmiHeader.biSize        =
+        sizeof(NES.RenderBuffer.Info.bmiHeader);
+    NES.RenderBuffer.Info.bmiHeader.biWidth       = 1280;
+    NES.RenderBuffer.Info.bmiHeader.biHeight      = -720;
+    NES.RenderBuffer.Info.bmiHeader.biPlanes      = 1;
+    NES.RenderBuffer.Info.bmiHeader.biBitCount    = 32;
+    NES.RenderBuffer.Info.bmiHeader.biCompression = BI_RGB;
+    NES.RenderBuffer.Memory =
         VirtualAlloc(0, 4 * 720 * 1280, MEM_COMMIT, PAGE_READWRITE);
     
     if(!CreateLogFile())
@@ -1111,7 +1095,7 @@ int CALLBACK WinMain
     WindowClass.lpszMenuName  = MAKEINTRESOURCE(IDR_MENU1);
     WindowClass.lpszClassName = "CarmiNESWindowClass";
     RegisterClass(&WindowClass);
-    Window = CreateWindow("CarmiNESWindowClass",
+    NES.Window = CreateWindow("CarmiNESWindowClass",
                                    "CarmiNES",
                                    WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                                    CW_USEDEFAULT,
@@ -1122,7 +1106,7 @@ int CALLBACK WinMain
                                    NULL,
                                    hInstance,
                                    NULL);
-    if(!Window)
+    if(!NES.Window)
     {
         int a = GetLastError();
         Log("Aborting. Couldn't create window.");
@@ -1131,18 +1115,18 @@ int CALLBACK WinMain
 
     Log("Created window.");
         
-    CheckMenuItem(GetMenu(Window), ID_SPEED_1X, MF_CHECKED);
-    CheckMenuItem(GetMenu(Window), ID_REGION_PAL, MF_CHECKED);
+    CheckMenuItem(GetMenu(NES.Window), ID_SPEED_1X, MF_CHECKED);
+    CheckMenuItem(GetMenu(NES.Window), ID_REGION_PAL, MF_CHECKED);
     unsigned nOfFrames = 0;
-    MainWindowDC = GetDC(Window);
+    NES.MainWindowDC = GetDC(NES.Window);
     while(NES.Running) //Every iteration of this loop is a frame
     {
         MSG Message;
         while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
-            if(DebuggerHandle != 0)
+            if(NES.Debugger.DebuggerHandle != 0)
             {
-                if(!IsDialogMessage(DebuggerHandle, &Message))
+                if(!IsDialogMessage(NES.Debugger.DebuggerHandle, &Message))
                 {
                     TranslateMessage(&Message);
                     DispatchMessage(&Message);
@@ -1154,7 +1138,7 @@ int CALLBACK WinMain
                 DispatchMessage(&Message);
             }
         }
-        if(Pause || !IsAROMLoaded || Debugger)
+        if(NES.Pause || !IsAROMLoaded || NES.Debugger.isDebuggerActive)
         {
             timeBeginPeriod(1);
             Sleep(33);
@@ -1186,16 +1170,16 @@ int CALLBACK WinMain
                 NES.CPU.CurrentCycle++; /*A new cycle starts*/
             }
         }
-        TestRender(Debugger?1:0);
+        TestRender(NES.Debugger.isDebuggerActive?1:0);
         RECT ClientRect;
-        GetClientRect(Window, &ClientRect);
-        StretchDIBits(MainWindowDC,
+        GetClientRect(NES.Window, &ClientRect);
+        StretchDIBits(NES.MainWindowDC,
                       0, 0,
                       ClientRect.right  - ClientRect.left,
                       ClientRect.bottom - ClientRect.top,
                       0, 0,
-                      RenderBuffer.Width, RenderBuffer.Height,
-                      RenderBuffer.Memory, &RenderBuffer.Info,
+                      NES.RenderBuffer.Width, NES.RenderBuffer.Height,
+                      NES.RenderBuffer.Memory, &NES.RenderBuffer.Info,
                       DIB_RGB_COLORS, SRCCOPY);
         nOfFrames++;
     }
@@ -1204,7 +1188,7 @@ quit:
     UnsignedtoString(nOfFrames, nOfFramesInString);
     Log(nOfFramesInString);
     Log("Quitting.");
-    CloseHandle(LogFileHandle);
+    CloseHandle(NES.LogFileHandle);
     return 0;
 }
 void WinMainCRTStartup()
