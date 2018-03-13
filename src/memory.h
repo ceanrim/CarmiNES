@@ -22,7 +22,6 @@
 class MemoryClass
 {
 private:
-    unsigned short AddressBus; //To hold data between cycles
     unsigned short temp; //Need it for indexed indirect
     bool AddressCarry;
 public:
@@ -39,6 +38,7 @@ public:
     void Write(unsigned char valueToWrite,
                unsigned char* cycle,
                unsigned char addrMode);
+    unsigned short AddressBus; //To hold data between cycles
     unsigned char ConversionTable[8]; //for xxxxxx00 instructions
     unsigned short Mapper;
     unsigned short PRGROMSize;

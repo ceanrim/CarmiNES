@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "main.h"
 #include "cpu.h"
+//NOTE TO CARMINE: YOU'RE WORKING ON THE ASL INSTRUCTION
 void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char FuncInstructionCycle)
 {
     switch(FuncCurrentInstruction & 0b00000011)
@@ -706,6 +707,315 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                     InstructionCycle = 0;
                     break;
                 }
+                case 0x06: //ASL xx
+                {
+                    if(InstructionCycle <= 2)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ZERO_PAGE,
+                                     &temp);
+                        if(a == 2)
+                        {
+                            InstructionCycle = 3;
+                        }
+                    }
+                    else
+                    {
+                        ASL(&temp, 3, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x0A: //ASL A
+                {
+                    if(A & 128)
+                    {
+                        P |= 1;
+                    }
+                    else
+                    {
+                        P &= 0b11111110;
+                    }
+                    A <<= 1;
+                    UpdateFlags(&A);
+                    InstructionCycle = 0;
+                    break;
+                }
+                case 0x0E: //ASL xxxx
+                {
+                    if(InstructionCycle <= 3)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ABSOLUTE,
+                                     &temp);
+                        if(a == 3)
+                        {
+                            InstructionCycle = 4;
+                        }
+                    }
+                    else
+                    {
+                        ASL(&temp, 4, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x16: //ASL xx+X
+                {
+                    if(InstructionCycle <= 3)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ZERO_PAGE_X,
+                                     &temp);
+                        if(InstructionCycle == 0) //It can take one cycle
+                                                  //to cross the page
+                        {
+                            InstructionCycle = a + 1;
+                            goto aaaa1;
+                        }
+                    }
+                    else
+                    {
+                aaaa1:
+                        ASL(&temp, 4, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x1E: //ASL xxxx+X
+                {
+                    if(InstructionCycle <= 4)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ABSOLUTE_X,
+                                     &temp);
+                        if(InstructionCycle == 0) //Because it can take 1 cycle to
+                                                  //cross the page
+                        {
+                            InstructionCycle = a + 1;
+                            goto aaaa2;
+                        }
+                    }
+                    else
+                    {
+                aaaa2:
+                        ASL(&temp, 5, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x2A: //ROL A
+                {
+                    unsigned char temp_ = (P & 1);
+                    if(A & 128)
+                    {
+                        P |= 1;
+                    }
+                    else
+                    {
+                        P &= 0b11111110;
+                    }
+                    A <<= 1;
+                    if(temp_)
+                    {
+                        A |= 1;
+                    }
+                    else
+                    {
+                        A &= 0b11111110;
+                    }
+                    UpdateFlags(&A);
+                    InstructionCycle = 0;
+                    break;
+                }
+                case 0x26: //ROL xx
+                {
+                    if(InstructionCycle <= 2)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ZERO_PAGE,
+                                     &temp);
+                        if(a == 2)
+                        {
+                            InstructionCycle = 3;
+                        }
+                    }
+                    else
+                    {
+                        ROL(&temp, 3, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x2E: //ROL xxxx
+                {
+                    if(InstructionCycle <= 3)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ABSOLUTE,
+                                     &temp);
+                        if(a == 3)
+                        {
+                            InstructionCycle = 4;
+                        }
+                    }
+                    else
+                    {
+                        ROL(&temp, 4, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x36: //ROL xx+X
+                {
+                    if(InstructionCycle <= 3)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ZERO_PAGE_X,
+                                     &temp);
+                        if(InstructionCycle == 0) //Because it can take 1 cycle to
+                                                  //cross the page
+                        {
+                            InstructionCycle = a + 1;
+                            goto aaaa4;
+                        }
+                    }
+                    else
+                    {
+                aaaa4:
+                        ROL(&temp, 4, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x3E: //ROL xxxx+X
+                {
+                    if(InstructionCycle <= 4)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ABSOLUTE_X,
+                                     &temp);
+                        if(InstructionCycle == 0) //Because it can take 1 cycle to
+                                                  //cross the page
+                        {
+                            InstructionCycle = a + 1;
+                            goto aaaa3;
+                        }
+                    }
+                    else
+                    {
+                aaaa3:
+                        ROL(&temp, 5, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x6A: //ROR A
+                {
+                    unsigned char temp_ = (P & 1);
+                    if(A & 1)
+                    {
+                        P |= 1;
+                    }
+                    else
+                    {
+                        P &= 0b11111110;
+                    }
+                    A >>= 1;
+                    if(temp_)
+                    {
+                        A |= 128;
+                    }
+                    else
+                    {
+                        A &= 0b01111111;
+                    }
+                    UpdateFlags(&A);
+                    InstructionCycle = 0;
+                    break;
+                }
+                case 0x66: //ROR xx
+                {
+                    if(InstructionCycle <= 2)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ZERO_PAGE,
+                                     &temp);
+                        if(a == 2)
+                        {
+                            InstructionCycle = 3;
+                        }
+                    }
+                    else
+                    {
+                        ROR(&temp, 3, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x6E: //ROR xxxx
+                {
+                    if(InstructionCycle <= 3)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ABSOLUTE,
+                                     &temp);
+                        if(a == 3)
+                        {
+                            InstructionCycle = 4;
+                        }
+                    }
+                    else
+                    {
+                        ROR(&temp, 4, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x76: //ROR xx+X
+                {
+                    if(InstructionCycle <= 3)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ZERO_PAGE_X,
+                                     &temp);
+                        if(InstructionCycle == 0) //Because it can take 1 cycle to
+                                                  //cross the page
+                        {
+                            InstructionCycle = a + 1;
+                            goto aaaa5;
+                        }
+                    }
+                    else
+                    {
+                aaaa5:
+                        ROR(&temp, 4, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x7E: //ROR xxxx+X
+                {
+                    if(InstructionCycle <= 4)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ABSOLUTE_X,
+                                     &temp);
+                        if(InstructionCycle == 0) //Because it can take 1 cycle to
+                                                  //cross the page
+                        {
+                            InstructionCycle = a + 1;
+                            goto aaaa6;
+                        }
+                    }
+                    else
+                    {
+                aaaa6:
+                        ROR(&temp, 5, &InstructionCycle);
+                    }
+                    break;
+                }
                 default:
                 {
                     return;
@@ -805,8 +1115,129 @@ void CPUClass::Branch(unsigned char flag, bool clear)
         InstructionCycle = 0;
     }
 }
+void CPUClass::ASL(unsigned char *Value, unsigned int CyclesTakenForAddressing,
+                   unsigned char *InstructionCycle)
+{
+    if(*InstructionCycle == CyclesTakenForAddressing - 1)
+    {
+        (*InstructionCycle)++;
+        return;
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing)
+    {
+        if(*Value & 128)
+        {
+            P |= 1;
+        }
+        else
+        {
+            P &= 0b11111110;
+        }
+        *Value <<= 1;
+        (*InstructionCycle)++;
+        UpdateFlags(&temp);
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing + 1)
+    {
+        NES.RAM.Write(NES.RAM.AddressBus, *Value);
+        *InstructionCycle = 0;
+    }
+}
+void CPUClass::ROL(unsigned char *Value, unsigned int CyclesTakenForAddressing,
+                   unsigned char *InstructionCycle)
+{
+    if(*InstructionCycle == CyclesTakenForAddressing - 1)
+    {
+        (*InstructionCycle)++;
+        return;
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing)
+    {
+        unsigned char temp_ = (P & 1);
+        if(*Value & 128)
+        {
+            P |= 1;
+        }
+        else
+        {
+            P &= 0b11111110;
+        }
+        *Value <<= 1;
+        if(temp_)
+        {
+            *Value |= 1;
+        }
+        else
+        {
+            *Value &= 0b11111110;
+        }
+        UpdateFlags(Value);
+        (*InstructionCycle)++;
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing + 1)
+    {
+        NES.RAM.Write(NES.RAM.AddressBus, *Value);
+        *InstructionCycle = 0;
+    }
+}
+void CPUClass::ROR(unsigned char *Value, unsigned int CyclesTakenForAddressing,
+                   unsigned char *InstructionCycle)
+{
+    if(*InstructionCycle == CyclesTakenForAddressing - 1)
+    {
+        (*InstructionCycle)++;
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing)
+    {
+        unsigned char temp_ = (P & 1);
+        if(*Value & 1)
+        {
+            P |= 1;
+        }
+        else
+        {
+            P &= 0b11111110;
+        }
+        *Value >>= 1;
+        if(temp_)
+        {
+            *Value |= 128;
+        }
+        else
+        {
+            *Value &= 0b01111111;
+        }
+        UpdateFlags(Value);
+        (*InstructionCycle)++;
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing + 1)
+    {
+        NES.RAM.Write(NES.RAM.AddressBus, *Value);
+        *InstructionCycle = 0;
+    }
+}
+void CPUClass::UpdateFlags(unsigned char *Register)
+{
+    if(*Register)
+    {
+        P &= 0b11111101;
+    }
+    else
+    {
+        P |= 2;
+    }
+    if(*Register & 128)
+    {
+        P |= 128;
+    }
+    else
+    {
+        P &= 127;
+    }
+}
 void CPUClass::Reset()
 {
+    memcpy(NES.CartridgeMemory, NES.ROMFile + 16, NES.RAM.PRGROMSize);
     PC = NES.RAM.Read(0xFFFC);
     PC |= (((unsigned short)(NES.RAM.Read(0xFFFD))) << 8);
     PCTemp = PC;

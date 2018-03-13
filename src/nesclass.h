@@ -32,6 +32,8 @@ public:
     HDC                MainWindowDC;
     HANDLE             LogFileHandle;
     DebuggerClass      Debugger;
+    unsigned char     *ROMFile;
+    DWORD              ROMFileSize;
     NESClass();
 };
 #endif

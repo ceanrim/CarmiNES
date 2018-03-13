@@ -24,11 +24,11 @@ unsigned char MemoryClass::Read(unsigned short Address)
     {
         return NES.InternalMemory[Address % 0x800];
     }
-    if((Address >= 0x8000) && (Address < 0xC000))
+    else if((Address >= 0x8000) && (Address < 0xC000))
     {
         return NES.CartridgeMemory[Address - 0x8000];
     }
-    if(Address >= 0xC000)
+    else if(Address >= 0xC000)
     {
         if(this->Mapper == 0)
         {
@@ -36,7 +36,7 @@ unsigned char MemoryClass::Read(unsigned short Address)
             {
                 return NES.CartridgeMemory[Address - 0xC000];
             }
-            if(PRGROMSize == 32768)
+            else if(PRGROMSize == 32768)
             {
                 return NES.CartridgeMemory[Address - 0x8000];
             }
@@ -55,11 +55,11 @@ unsigned char MemoryClass::ReadWithNoSideEffects(unsigned short Address)
     {
         return NES.InternalMemory[Address % 0x800];
     }
-    if((Address >= 0x8000) && (Address < 0xC000))
+    else if((Address >= 0x8000) && (Address < 0xC000))
     {
         return NES.CartridgeMemory[Address - 0x8000];
     }
-    if(Address >= 0xC000)
+    else if(Address >= 0xC000)
     {
         if(this->Mapper == 0)
         {
@@ -67,7 +67,7 @@ unsigned char MemoryClass::ReadWithNoSideEffects(unsigned short Address)
             {
                 return NES.CartridgeMemory[Address - 0xC000];
             }
-            if(PRGROMSize == 32768)
+            else if(PRGROMSize == 32768)
             {
                 return NES.CartridgeMemory[Address - 0x8000];
             }
@@ -359,24 +359,6 @@ void MemoryClass::Write(unsigned short address,
     if(address < 0x2000)
     {
         NES.InternalMemory[address % 0x800] = valueToWrite;
-    }
-    if((address >= 0x8000) && (address < 0xC000))
-    {
-        NES.CartridgeMemory[address - 0x8000] = valueToWrite;
-    }
-    if(address >= 0xC000)
-    {
-        if(this->Mapper == 0)
-        {
-            if(PRGROMSize == 16384)
-            {
-                NES.CartridgeMemory[address - 0xC000] = valueToWrite;
-            }
-            if(PRGROMSize == 32768)
-            {
-                NES.CartridgeMemory[address - 0x8000] = valueToWrite;
-            }
-        }
     }
 }
 void MemoryClass::Write(unsigned char valueToWrite,

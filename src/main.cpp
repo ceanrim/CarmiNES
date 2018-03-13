@@ -357,6 +357,10 @@ unsigned short HextoUshort(char *string)
 
 bool LoadROM(char *path)
 {
+    if(NES.ROMFile)
+    {
+        VirtualFree(NES.ROMFile, NES.ROMFileSize, MEM_RELEASE);
+    }
     HANDLE FileHandle = CreateFile(path,
                                    GENERIC_READ,
                                    FILE_SHARE_READ,
@@ -366,22 +370,22 @@ bool LoadROM(char *path)
                                    FILE_FLAG_OVERLAPPED,
                                    NULL);
     DWORD FileSizeHigh, FileSizeLow;
-    FileSizeLow = GetFileSize(FileHandle, &FileSizeHigh);
+    NES.ROMFileSize = GetFileSize(FileHandle, &FileSizeHigh);
     if(FileSizeLow < 16)
     {
         MessageBox(0, TEXT("File too small"), TEXT("Error"), MB_OK);
         return false;
     }
-    void *FileMemory = VirtualAlloc(0, FileSizeLow, MEM_COMMIT, PAGE_READWRITE);
+    NES.ROMFile = (unsigned char*)VirtualAlloc(0, FileSizeLow, MEM_COMMIT, PAGE_READWRITE);
     OVERLAPPED ol {};
     DWORD BytesRead;
     ReadFile(FileHandle,
-             FileMemory,
+             NES.ROMFile,
              FileSizeLow,
              &BytesRead,
              &ol);
-    unsigned char *FileMemoryChar     = (unsigned char *)(FileMemory);
-    unsigned      *FileMemoryUnsigned = (unsigned *)(FileMemory);
+    unsigned char *FileMemoryChar     = (unsigned char *)(NES.ROMFile);
+    unsigned      *FileMemoryUnsigned = (unsigned *)(NES.ROMFile);
     if(FileMemoryUnsigned[0] != 0x1A53454E) //NES\x14
     {
         MessageBox(0, TEXT("Invalid NES file."), TEXT("Error"), MB_OK);
@@ -400,8 +404,11 @@ bool LoadROM(char *path)
                    TEXT("Error"), MB_OK);
         return false;
     }
-    unsigned char *PRGROM = FileMemoryChar + 16;
-    memcpy(NES.CartridgeMemory, PRGROM, NES.RAM.PRGROMSize);
+    if(NES.ROMFileSize != (NES.RAM.PRGROMSize + 16))
+    {
+        MessageBox(0, TEXT("Invalid NES file."), TEXT("Error"), MB_OK);
+        return false;
+    }
     CloseHandle(FileHandle);
     IsAROMLoaded = true;
     NES.CPU.Reset();
@@ -659,6 +666,7 @@ void ShowDisassembly(HWND hWnd, int Control, unsigned short Address)
                 a++;
                 string[a] = '\n';
                 a++;
+                b++;
                 break;
             }
             case ADDR_RELATIVE: //TODO

@@ -24,5 +24,9 @@ public:
     void Reset();
     void CMP(unsigned char*, unsigned char);
     void Branch(unsigned char, bool);
+    void UpdateFlags(unsigned char*);
+    void ASL(unsigned char*, unsigned int, unsigned char *);
+    void ROL(unsigned char*, unsigned int, unsigned char *);
+    void ROR(unsigned char*, unsigned int, unsigned char *);
 };
 #endif

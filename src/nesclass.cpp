@@ -16,7 +16,8 @@ NESClass::NESClass():
         Window(0),
         MainWindowDC(0),
         LogFileHandle(INVALID_HANDLE_VALUE),
-        Debugger()
+        Debugger(),
+        ROMFile(0)
 {
 }
 
