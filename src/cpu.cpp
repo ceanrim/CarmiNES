@@ -7,7 +7,7 @@
 #include "memory.h"
 #include "main.h"
 #include "cpu.h"
-//NOTE TO CARMINE: YOU'RE WORKING ON THE INC INSTRUCTION
+//NOTE TO CARMINE: YOU'RE WORKING ON THE DEC INSTRUCTION
 void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char FuncInstructionCycle)
 {
     switch(FuncCurrentInstruction & 0b00000011)
@@ -321,6 +321,13 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                     InstructionCycle = 0;
                     break;
                 }
+                case 0x88: //DEY
+                {
+                    Y--;
+                    UpdateFlags(&Y);
+                    InstructionCycle = 0;
+                    break;
+                }
                 default:
                 {
                     InstructionCycle = 0;
@@ -590,7 +597,7 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                 } break;
             }
         } break;
-        case 2: //ASL ROL LSR ROR STX LDX DEC INC
+        case 2: //ASL ROL LSR ROR STX LDX DEC INC DEX
         {
             switch(FuncCurrentInstruction)
             {
@@ -1066,6 +1073,49 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                     INC(&temp, 5, &InstructionCycle);
                     break;
                 }
+                case 0xC6: //DEC xx
+                {
+                    int a = InstructionCycle;
+                    NES.RAM.Read(0, &InstructionCycle,
+                                 ADDR_ZERO_PAGE, &temp);
+                    InstructionCycle = a;
+                    DEC(&temp, 3, &InstructionCycle);
+                    break;
+                }
+                case 0xD6: //DEC xx+X
+                {
+                    int a = InstructionCycle;
+                    NES.RAM.Read(0, &InstructionCycle,
+                                 ADDR_ZERO_PAGE_X, &temp);
+                    InstructionCycle = a;
+                    DEC(&temp, 4, &InstructionCycle);
+                    break;
+                }
+                case 0xCE: //DEC xxxx
+                {
+                    int a = InstructionCycle;
+                    NES.RAM.Read(0, &InstructionCycle,
+                                 ADDR_ABSOLUTE, &temp);
+                    InstructionCycle = a;
+                    DEC(&temp, 4, &InstructionCycle);
+                    break;
+                }
+                case 0xDE: //DEC xxxx+X
+                {
+                    int a = InstructionCycle;
+                    NES.RAM.Read(0, &InstructionCycle,
+                                 ADDR_ABSOLUTE_X, &temp);
+                    InstructionCycle = a;
+                    DEC(&temp, 5, &InstructionCycle);
+                    break;
+                }
+                case 0xCA: //DEX
+                {
+                    X--;
+                    UpdateFlags(&X);
+                    InstructionCycle = 0;
+                    break;
+                }
                 default:
                 {
                     return;
@@ -1277,6 +1327,25 @@ void CPUClass::INC(unsigned char* Value, unsigned int CyclesTakenForAddressing,
     {
         (*InstructionCycle)++;
         (*Value)++;
+        UpdateFlags(Value);
+    }
+    else
+    {
+        NES.RAM.Write(NES.RAM.AddressBus, *Value);
+        (*InstructionCycle) = 0;
+    }
+}
+void CPUClass::DEC(unsigned char* Value, unsigned int CyclesTakenForAddressing,
+                   unsigned char* InstructionCycle)
+{
+    if(*InstructionCycle < CyclesTakenForAddressing)
+    {
+        (*InstructionCycle)++;
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing)
+    {
+        (*InstructionCycle)++;
+        (*Value)--;
         UpdateFlags(Value);
     }
     else

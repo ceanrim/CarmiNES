@@ -29,5 +29,6 @@ public:
     void ROL(unsigned char*, unsigned int, unsigned char *);
     void ROR(unsigned char*, unsigned int, unsigned char *);
     void INC(unsigned char*, unsigned int, unsigned char *);
+    void DEC(unsigned char*, unsigned int, unsigned char *);
 };
 #endif
