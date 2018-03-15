@@ -28,5 +28,6 @@ public:
     void ASL(unsigned char*, unsigned int, unsigned char *);
     void ROL(unsigned char*, unsigned int, unsigned char *);
     void ROR(unsigned char*, unsigned int, unsigned char *);
+    void INC(unsigned char*, unsigned int, unsigned char *);
 };
 #endif

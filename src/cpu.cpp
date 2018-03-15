@@ -7,7 +7,7 @@
 #include "memory.h"
 #include "main.h"
 #include "cpu.h"
-//NOTE TO CARMINE: YOU'RE WORKING ON THE ASL INSTRUCTION
+//NOTE TO CARMINE: YOU'RE WORKING ON THE INC INSTRUCTION
 void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char FuncInstructionCycle)
 {
     switch(FuncCurrentInstruction & 0b00000011)
@@ -305,6 +305,20 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                 case 0x70: //BVS
                 {
                     Branch(64, false);
+                    break;
+                }
+                case 0xE8: //INX
+                {
+                    X++;
+                    UpdateFlags(&X);
+                    InstructionCycle = 0;
+                    break;
+                }
+                case 0xC8: //INY
+                {
+                    Y++;
+                    UpdateFlags(&Y);
+                    InstructionCycle = 0;
                     break;
                 }
                 default:
@@ -1016,6 +1030,42 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                     }
                     break;
                 }
+                case 0xE6: //INC xx
+                {
+                    int a = InstructionCycle;
+                    NES.RAM.Read(0, &InstructionCycle,
+                                 ADDR_ZERO_PAGE, &temp);
+                    InstructionCycle = a;
+                    INC(&temp, 3, &InstructionCycle);
+                    break;
+                }
+                case 0xF6: //INC xx+X
+                {
+                    int a = InstructionCycle;
+                    NES.RAM.Read(0, &InstructionCycle,
+                                 ADDR_ZERO_PAGE_X, &temp);
+                    InstructionCycle = a;
+                    INC(&temp, 4, &InstructionCycle);
+                    break;
+                }
+                case 0xEE: //INC xxxx
+                {
+                    int a = InstructionCycle;
+                    NES.RAM.Read(0, &InstructionCycle,
+                                 ADDR_ABSOLUTE, &temp);
+                    InstructionCycle = a;
+                    INC(&temp, 4, &InstructionCycle);
+                    break;
+                }
+                case 0xFE: //INC xxxx+X
+                {
+                    int a = InstructionCycle;
+                    NES.RAM.Read(0, &InstructionCycle,
+                                 ADDR_ABSOLUTE_X, &temp);
+                    InstructionCycle = a;
+                    INC(&temp, 5, &InstructionCycle);
+                    break;
+                }
                 default:
                 {
                     return;
@@ -1214,6 +1264,25 @@ void CPUClass::ROR(unsigned char *Value, unsigned int CyclesTakenForAddressing,
     {
         NES.RAM.Write(NES.RAM.AddressBus, *Value);
         *InstructionCycle = 0;
+    }
+}
+void CPUClass::INC(unsigned char* Value, unsigned int CyclesTakenForAddressing,
+                   unsigned char* InstructionCycle)
+{
+    if(*InstructionCycle < CyclesTakenForAddressing)
+    {
+        (*InstructionCycle)++;
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing)
+    {
+        (*InstructionCycle)++;
+        (*Value)++;
+        UpdateFlags(Value);
+    }
+    else
+    {
+        NES.RAM.Write(NES.RAM.AddressBus, *Value);
+        (*InstructionCycle) = 0;
     }
 }
 void CPUClass::UpdateFlags(unsigned char *Register)

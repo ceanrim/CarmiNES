@@ -371,17 +371,17 @@ bool LoadROM(char *path)
                                    NULL);
     DWORD FileSizeHigh, FileSizeLow;
     NES.ROMFileSize = GetFileSize(FileHandle, &FileSizeHigh);
-    if(FileSizeLow < 16)
+    if(NES.ROMFileSize < 16)
     {
         MessageBox(0, TEXT("File too small"), TEXT("Error"), MB_OK);
         return false;
     }
-    NES.ROMFile = (unsigned char*)VirtualAlloc(0, FileSizeLow, MEM_COMMIT, PAGE_READWRITE);
+    NES.ROMFile = (unsigned char*)VirtualAlloc(0, NES.ROMFileSize, MEM_COMMIT, PAGE_READWRITE);
     OVERLAPPED ol {};
     DWORD BytesRead;
     ReadFile(FileHandle,
              NES.ROMFile,
-             FileSizeLow,
+             NES.ROMFileSize,
              &BytesRead,
              &ol);
     unsigned char *FileMemoryChar     = (unsigned char *)(NES.ROMFile);

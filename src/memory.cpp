@@ -90,12 +90,17 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 2)
+            else if(*cycle == 2)
             {
                 *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
+            else
+            {
+                (*cycle)++;
+            }
+            break;
         }
         case ADDR_ZERO_PAGE_X:
         {
@@ -106,7 +111,7 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 2)
+            else if(*cycle == 2)
             {
                 Read(AddressBus);
                 AddressBus += NES.CPU.X;
@@ -114,12 +119,17 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 3)
+            else if(*cycle == 3)
             {
                 *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
+            else
+            {
+                (*cycle)++;
+            }
+            break;
         }
         case ADDR_ZERO_PAGE_Y:
         {
@@ -130,7 +140,7 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 2)
+            else if(*cycle == 2)
             {
                 Read(AddressBus);
                 AddressBus += NES.CPU.Y;
@@ -138,12 +148,17 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 3)
+            else if(*cycle == 3)
             {
                 *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
+            else
+            {
+                (*cycle)++;
+            }
+            break;
         }
         case ADDR_IMMEDIATE:
         {
@@ -161,19 +176,24 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 2)
+            else if(*cycle == 2)
             {
                 AddressBus |= (Read(NES.CPU.PCTemp) << 8);
                 NES.CPU.PCTemp++;
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 3)
+            else if(*cycle == 3)
             {
                 *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
+            else
+            {
+                (*cycle)++;
+            }
+            break;
         } break;
         case ADDR_ABSOLUTE_X:
         {
@@ -184,7 +204,7 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 2)
+            else if(*cycle == 2)
             {
                 AddressBus |= (Read(NES.CPU.PCTemp) << 8);
                 if((AddressBus >> 8) != ((AddressBus+NES.CPU.X) >> 8))
@@ -200,7 +220,7 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 3)
+            else if(*cycle == 3)
             {
                 if(!AddressCarry)
                 {
@@ -212,12 +232,17 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 4)
+            else if(*cycle == 4)
             {
                 *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
+            else
+            {
+                (*cycle)++;
+            }
+            break;
         }
         case ADDR_ABSOLUTE_Y:
         {
@@ -228,7 +253,7 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 2)
+            else if(*cycle == 2)
             {
                 AddressBus |= (Read(NES.CPU.PCTemp) << 8);
                 if((AddressBus >> 8) != ((AddressBus+NES.CPU.Y) >> 8))
@@ -244,7 +269,7 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 3)
+            else if(*cycle == 3)
             {
                 if(!AddressCarry)
                 {
@@ -256,12 +281,17 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 4)
+            else if(*cycle == 4)
             {
                 *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
+            else
+            {
+                (*cycle)++;
+            }
+            break;
         }
         case ADDR_INDIRECT_X:
         {
@@ -272,33 +302,38 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 2)
+            else if(*cycle == 2)
             {
                 Read(AddressBus);
                 AddressBus += NES.CPU.X;
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 3)
+            else if(*cycle == 3)
             {
                 temp = Read(AddressBus);
                 AddressBus++;
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 4)
+            else if(*cycle == 4)
             {
                 temp |= ((Read(AddressBus)) << 8);
                 AddressBus = temp;
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 5)
+            else if(*cycle == 5)
             {
                 *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
+            else
+            {
+                (*cycle)++;
+            }
+            break;
         }
         case ADDR_INDIRECT_Y:
         {
@@ -309,14 +344,14 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 2)
+            else if(*cycle == 2)
             {
                 temp = Read(AddressBus);
                 AddressBus++;
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 3)
+            else if(*cycle == 3)
             {
                 temp |= (Read(AddressBus) << 8);
                 AddressBus = temp;
@@ -332,7 +367,7 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 4)
+            else if(*cycle == 4)
             {
                 if(!AddressCarry)
                 {
@@ -344,12 +379,17 @@ void MemoryClass::Read(unsigned short address,
                 (*cycle)++;
                 break;
             }
-            if(*cycle == 5)
+            else if(*cycle == 5)
             {
                 *valueToRewrite = Read(AddressBus);
                 (*cycle) = 0;
                 break;
             }
+            else
+            {
+                (*cycle)++;
+            }
+            break;
         }
     }
 }
