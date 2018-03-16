@@ -25,6 +25,7 @@ public:
     float              Speed;
     bool               Running;
     bool               Pause;
+    bool               KIL;
     unsigned char     *InternalMemory;
     unsigned char     *CartridgeMemory;
     RenderBufferClass  RenderBuffer;

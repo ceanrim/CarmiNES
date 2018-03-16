@@ -7,7 +7,6 @@
 #include "memory.h"
 #include "main.h"
 #include "cpu.h"
-//NOTE TO CARMINE: YOU'RE WORKING ON THE DEC INSTRUCTION
 void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char FuncInstructionCycle)
 {
     switch(FuncCurrentInstruction & 0b00000011)
@@ -326,6 +325,43 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                     Y--;
                     UpdateFlags(&Y);
                     InstructionCycle = 0;
+                    break;
+                }
+                case 0x80: //NOP #xx
+                {
+                    NOP(ADDR_IMMEDIATE);
+                    break;
+                }
+                case 0x04:
+                case 0x44:
+                case 0x64: //NOP xx
+                {
+                    NOP(ADDR_ZERO_PAGE);
+                    break;
+                }
+                case 0x0C: //NOP xxxx
+                {
+                    NOP(ADDR_ABSOLUTE);
+                    break;
+                }
+                case 0x14:
+                case 0x34:
+                case 0x54:
+                case 0x74:
+                case 0xD4:
+                case 0xF4: //NOP xx+X
+                {
+                    NOP(ADDR_ZERO_PAGE_X);
+                    break;
+                }
+                case 0x1C:
+                case 0x3C:
+                case 0x5C:
+                case 0x7C:
+                case 0xDC:
+                case 0xFC: //NOP xxxx+X
+                {
+                    NOP(ADDR_ABSOLUTE_X);
                     break;
                 }
                 default:
@@ -1116,6 +1152,39 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                     InstructionCycle = 0;
                     break;
                 }
+                case 0x02:
+                case 0x12:
+                case 0x22:
+                case 0x32:
+                case 0x42:
+                case 0x52:
+                case 0x62:
+                case 0x72:
+                case 0x92:
+                case 0xB2:
+                case 0xD2:
+                case 0xF2: //KIL
+                {
+                    NES.KIL = true;
+                }
+                case 0x82:
+                case 0xC2:
+                case 0xE2: //NOP #xx
+                {
+                    NOP(ADDR_IMMEDIATE);
+                    break;
+                }
+                case 0x1A:
+                case 0x3A:
+                case 0x5A:
+                case 0x7A:
+                case 0xDA:
+                case 0xEA:
+                case 0xFA: //NOP
+                {
+                    InstructionCycle = 0;
+                    break;
+                }
                 default:
                 {
                     return;
@@ -1373,8 +1442,14 @@ void CPUClass::UpdateFlags(unsigned char *Register)
         P &= 127;
     }
 }
+void CPUClass::NOP(unsigned char addrMode)
+{
+    unsigned char a;
+    NES.RAM.Read(0, &InstructionCycle, addrMode, &a);
+}
 void CPUClass::Reset()
 {
+    NES.KIL = false;
     memcpy(NES.CartridgeMemory, NES.ROMFile + 16, NES.RAM.PRGROMSize);
     PC = NES.RAM.Read(0xFFFC);
     PC |= (((unsigned short)(NES.RAM.Read(0xFFFD))) << 8);

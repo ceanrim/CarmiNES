@@ -89,7 +89,7 @@ const char InstrAddrModeTable[] =
     ADDR_IMPLIED, ADDR_ABSOLUTE_Y, ADDR_IMPLIED, ADDR_ABSOLUTE_Y,
     ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X, ADDR_ABSOLUTE_X,
 
-    ADDR_IMPLIED, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
+    ADDR_IMMEDIATE, ADDR_INDIRECT_X, ADDR_IMMEDIATE, ADDR_INDIRECT_X,
     ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE, ADDR_ZERO_PAGE,
     ADDR_IMPLIED, ADDR_IMMEDIATE, ADDR_IMPLIED, ADDR_IMMEDIATE,
     ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE, ADDR_ABSOLUTE,
@@ -836,23 +836,26 @@ LRESULT CALLBACK DebuggerProc
                 }
                 case IDC_INSTRUCTION:
                 {
-                    do
+                    if(!NES.KIL)
                     {
-                        if(NES.CPU.InstructionCycle == 0)
+                        do
                         {
-                            NES.CPU.PC = NES.CPU.PCTemp;
-                            NES.CPU.CurrentInstruction = NES.RAM.Read(NES.CPU.PCTemp);
-                            NES.CPU.InstructionCycle++;
-                            NES.CPU.CurrentCycle++;
-                            ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
-                            NES.CPU.PCTemp++;
-                        }
-                        else
-                        {
-                            NES.CPU.RunCycle(NES.CPU.CurrentInstruction, NES.CPU.InstructionCycle);
-                            NES.CPU.CurrentCycle++;
-                        }
-                    } while(NES.CPU.InstructionCycle != 0);
+                            if(NES.CPU.InstructionCycle == 0)
+                            {
+                                NES.CPU.PC = NES.CPU.PCTemp;
+                                NES.CPU.CurrentInstruction = NES.RAM.Read(NES.CPU.PCTemp);
+                                NES.CPU.InstructionCycle++;
+                                NES.CPU.CurrentCycle++;
+                                ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
+                                NES.CPU.PCTemp++;
+                            }
+                            else
+                            {
+                                NES.CPU.RunCycle(NES.CPU.CurrentInstruction, NES.CPU.InstructionCycle);
+                                NES.CPU.CurrentCycle++;
+                            }
+                        } while(NES.CPU.InstructionCycle != 0 && !NES.KIL);
+                    }
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
                                NES.Debugger.CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
@@ -1104,16 +1107,16 @@ int CALLBACK WinMain
     WindowClass.lpszClassName = "CarmiNESWindowClass";
     RegisterClass(&WindowClass);
     NES.Window = CreateWindow("CarmiNESWindowClass",
-                                   "CarmiNES",
-                                   WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-                                   CW_USEDEFAULT,
-                                   CW_USEDEFAULT,
-                                   CW_USEDEFAULT,
-                                   CW_USEDEFAULT,
-                                   NULL,
-                                   NULL,
-                                   hInstance,
-                                   NULL);
+                              "CarmiNES",
+                              WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                              CW_USEDEFAULT,
+                              CW_USEDEFAULT,
+                              CW_USEDEFAULT,
+                              CW_USEDEFAULT,
+                              NULL,
+                              NULL,
+                              hInstance,
+                              NULL);
     if(!NES.Window)
     {
         int a = GetLastError();
@@ -1146,7 +1149,7 @@ int CALLBACK WinMain
                 DispatchMessage(&Message);
             }
         }
-        if(NES.Pause || !IsAROMLoaded || NES.Debugger.isDebuggerActive)
+        if(NES.Pause || !IsAROMLoaded || NES.Debugger.isDebuggerActive || NES.KIL)
         {
             timeBeginPeriod(1);
             Sleep(33);
