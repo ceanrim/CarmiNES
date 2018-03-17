@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "main.h"
 #include "cpu.h"
+//NOTE to Carmine: You're working on the stack
 void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char FuncInstructionCycle)
 {
     switch(FuncCurrentInstruction & 0b00000011)
@@ -364,6 +365,30 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                     NOP(ADDR_ABSOLUTE_X);
                     break;
                 }
+                case 0x48:  //PHA
+                {
+                    Push(A);
+                    break;
+                }
+                case 0x08: //PHP
+                {
+                    Push(P);
+                    break;
+                }
+                case 0x68: //PLA
+                {
+                    Pull(&A);
+                    if(!InstructionCycle)
+                    {
+                        UpdateFlags(&A);
+                    }
+                    break;
+                }
+                case 0x28: //PLP
+                {
+                    Pull(&P);
+                    break;
+                }
                 default:
                 {
                     InstructionCycle = 0;
@@ -568,7 +593,7 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                 case 0b11000000: //CMP
                 {
                     CMP(&A, (unsigned char)(FuncCurrentInstruction &
-                                                 (unsigned char)0b00011100));
+                                            (unsigned char)0b00011100));
                 } break;
                 case 0b11100000: //SBC
                 {
@@ -1446,6 +1471,38 @@ void CPUClass::NOP(unsigned char addrMode)
 {
     unsigned char a;
     NES.RAM.Read(0, &InstructionCycle, addrMode, &a);
+}
+void CPUClass::Push(unsigned char Value)
+{
+    if(InstructionCycle == 1)
+    {
+        NES.RAM.Read(PCTemp);
+        InstructionCycle++;
+    }
+    else if(InstructionCycle == 2)
+    {
+        NES.RAM.Write(((unsigned short)S)|256, Value);
+        S--;
+        InstructionCycle = 0;
+    }
+}
+void CPUClass::Pull(unsigned char *Value)
+{
+    if(InstructionCycle == 1)
+    {
+        NES.RAM.Read(PCTemp);
+        InstructionCycle++;
+    }
+    else if(InstructionCycle == 2)
+    {
+        S++;
+        InstructionCycle++;
+    }
+    else if(InstructionCycle == 3)
+    {
+        *Value = NES.RAM.Read(0x100+S);
+        InstructionCycle = 0;
+    }
 }
 void CPUClass::Reset()
 {
