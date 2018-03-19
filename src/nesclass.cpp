@@ -11,6 +11,7 @@ NESClass::NESClass():
         Running(true),
         InternalMemory(0),
         CartridgeMemory(0),
+        WRAM(0),
         Pause(false),
         RenderBuffer(),
         Window(0),

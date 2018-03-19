@@ -404,7 +404,7 @@ bool LoadROM(char *path)
                    TEXT("Error"), MB_OK);
         return false;
     }
-    if(NES.ROMFileSize != (NES.RAM.PRGROMSize + 16))
+    if(0/*NES.ROMFileSize != (NES.RAM.PRGROMSize + 16)*/)
     {
         MessageBox(0, TEXT("Invalid NES file."), TEXT("Error"), MB_OK);
         return false;
@@ -1093,7 +1093,8 @@ int CALLBACK WinMain
     memset(NES.InternalMemory, 0, 256);
     NES.CartridgeMemory =
         (unsigned char*)(VirtualAlloc(0, 32768, MEM_COMMIT, PAGE_READWRITE));
-    
+    NES.WRAM = (unsigned char*)(VirtualAlloc(0, 8192, MEM_COMMIT, PAGE_READWRITE));
+    memset(NES.WRAM, 0, 8192);
     WNDCLASS WindowClass {};
     WindowClass.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     WindowClass.lpfnWndProc   = MainWindowCallback;

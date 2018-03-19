@@ -24,6 +24,10 @@ unsigned char MemoryClass::Read(unsigned short Address)
     {
         return NES.InternalMemory[Address % 0x800];
     }
+    else if((Address >= 0x6000) && (Address < 0x8000))
+    {
+        return NES.WRAM[Address - 0x6000];
+    }
     else if((Address >= 0x8000) && (Address < 0xC000))
     {
         return NES.CartridgeMemory[Address - 0x8000];
@@ -41,6 +45,10 @@ unsigned char MemoryClass::Read(unsigned short Address)
                 return NES.CartridgeMemory[Address - 0x8000];
             }
         }
+    }
+    else
+    {
+        return 0;
     }
 }
 
@@ -55,6 +63,10 @@ unsigned char MemoryClass::ReadWithNoSideEffects(unsigned short Address)
     {
         return NES.InternalMemory[Address % 0x800];
     }
+    else if((Address >= 0x6000) && (Address < 0x8000))
+    {
+        return NES.WRAM[Address - 0x6000];
+    }
     else if((Address >= 0x8000) && (Address < 0xC000))
     {
         return NES.CartridgeMemory[Address - 0x8000];
@@ -72,6 +84,10 @@ unsigned char MemoryClass::ReadWithNoSideEffects(unsigned short Address)
                 return NES.CartridgeMemory[Address - 0x8000];
             }
         }
+    }
+    else
+    {
+        return 0;
     }
 }
 void MemoryClass::Read(unsigned short address,
@@ -399,6 +415,10 @@ void MemoryClass::Write(unsigned short address,
     if(address < 0x2000)
     {
         NES.InternalMemory[address % 0x800] = valueToWrite;
+    }
+    else if((address >= 0x6000) && (address < 0x8000))
+    {
+        NES.WRAM[address - 0x6000] = valueToWrite;
     }
 }
 void MemoryClass::Write(unsigned char valueToWrite,

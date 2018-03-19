@@ -28,6 +28,7 @@ public:
     bool               KIL;
     unsigned char     *InternalMemory;
     unsigned char     *CartridgeMemory;
+    unsigned char     *WRAM;
     RenderBufferClass  RenderBuffer;
     HWND               Window;
     HDC                MainWindowDC;
