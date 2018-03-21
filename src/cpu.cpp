@@ -168,7 +168,7 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                     if(InstructionCycle == 0)
                     {
                         unsigned char a = A & temp;
-                        if(a & 0b10000000)
+                        if(temp & 0b10000000)
                         {
                             P |= 0b10000000;
                         }
@@ -387,6 +387,133 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                 case 0x28: //PLP
                 {
                     Pull(&P);
+                    break;
+                }
+                case 0x20: //JSR xxxx
+                {
+                    if(InstructionCycle == 1)
+                    {
+                        AddressBus = NES.RAM.Read(PCTemp);
+                        PCTemp++;
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 2)
+                    {
+                        AddressBus |= (NES.RAM.Read(PCTemp) << 8);
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 3)
+                    {
+                        NES.RAM.Write(0x100+S, (unsigned char)AddressBus);
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 4)
+                    {
+                        NES.RAM.Write(0x100+S, (*((unsigned char*)(&PCTemp)+1)));
+                        S--;
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 5)
+                    {
+                        NES.RAM.Write(0x100+S, (unsigned char)PCTemp);
+                        S--;
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 6)
+                    {
+                        PCTemp = AddressBus;
+                        InstructionCycle = 0;
+                    }
+                    break;
+                }
+                case 0x60: //RTS
+                {
+                    if(InstructionCycle < 3)
+                    {
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 3)
+                    {
+                        S++;
+                        PCTemp = NES.RAM.Read(0x100+S);
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 4)
+                    {
+                        S++;
+                        PCTemp |= (NES.RAM.Read(0x100+S) << 8);
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 5)
+                    {
+                        PCTemp++;
+                        InstructionCycle = 0;
+                    }
+                    break;
+                }
+                case 0x00: //BRK
+                {
+                    if(InstructionCycle == 1)
+                    {
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 2)
+                    {
+                        unsigned short PCToPush = PCTemp + 1;
+                        NES.RAM.Write(0x100+S, (*((unsigned char*)(&PCToPush)+1)));
+                        S--;
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 3)
+                    {
+                        unsigned short PCToPush = PCTemp + 1;
+                        NES.RAM.Write(0x100+S, (unsigned char)(PCToPush));
+                        S--;
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 4)
+                    {
+                        NES.RAM.Write(0x100+S, P|0b00110000);
+                        S--;
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 5)
+                    {
+                        PCTemp = NES.RAM.Read(0xFFFE);
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 6)
+                    {
+                        PCTemp |= (unsigned short)(NES.RAM.Read(0xFFFF) << 8);
+                        P &= 0b11111011;
+                        InstructionCycle = 0;
+                    }
+                    break;
+                }
+                case 0x40: //RTI
+                {
+                    if(InstructionCycle < 3)
+                    {
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 3)
+                    {
+                        S++;
+                        P = (NES.RAM.Read(0x100+S) & 0b11001111);
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 4)
+                    {
+                        S++;
+                        PCTemp = NES.RAM.Read(0x100+S);
+                        InstructionCycle++;
+                    }
+                    else if(InstructionCycle == 5)
+                    {
+                        S++;
+                        PCTemp |= (NES.RAM.Read(0x100+S) << 8);
+                        InstructionCycle = 0;
+                    }
                     break;
                 }
                 default:
@@ -656,6 +783,7 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                         }
                     }
                 } break;
+                
             }
         } break;
         case 2: //ASL ROL LSR ROR STX LDX DEC INC DEX
@@ -883,6 +1011,103 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
                     {
                 aaaa2:
                         ASL(&temp, 5, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x46: //LSR xx
+                {
+                    if(InstructionCycle <= 2)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ZERO_PAGE,
+                                     &temp);
+                        if(a == 2)
+                        {
+                            InstructionCycle = 3;
+                        }
+                    }
+                    else
+                    {
+                        LSR(&temp, 3, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x4A: //LSR A
+                {
+                    if(A & 1)
+                    {
+                        P |= 1;
+                    }
+                    else
+                    {
+                        P &= 0b11111110;
+                    }
+                    A >>= 1;
+                    UpdateFlags(&A);
+                    InstructionCycle = 0;
+                    break;
+                }
+                case 0x4E: //LSR xxxx
+                {
+                    if(InstructionCycle <= 3)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ABSOLUTE,
+                                     &temp);
+                        if(a == 3)
+                        {
+                            InstructionCycle = 4;
+                        }
+                    }
+                    else
+                    {
+                        LSR(&temp, 4, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x56: //LSR xx+X
+                {
+                    if(InstructionCycle <= 3)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ZERO_PAGE_X,
+                                     &temp);
+                        if(InstructionCycle == 0) //It can take one cycle
+                                                  //to cross the page
+                        {
+                            InstructionCycle = a + 1;
+                            goto aaaa7;
+                        }
+                    }
+                    else
+                    {
+                aaaa7:
+                        LSR(&temp, 4, &InstructionCycle);
+                    }
+                    break;
+                }
+                case 0x5E: //LSR xxxx+X
+                {
+                    if(InstructionCycle <= 4)
+                    {
+                        int a = InstructionCycle;
+                        NES.RAM.Read(0, &InstructionCycle,
+                                     ADDR_ABSOLUTE_X,
+                                     &temp);
+                        if(InstructionCycle == 0) //Because it can take 1 cycle to
+                                                  //cross the page
+                        {
+                            InstructionCycle = a + 1;
+                            goto aaaa8;
+                        }
+                    }
+                    else
+                    {
+                aaaa8:
+                        LSR(&temp, 5, &InstructionCycle);
                     }
                     break;
                 }
@@ -1328,6 +1553,34 @@ void CPUClass::ASL(unsigned char *Value, unsigned int CyclesTakenForAddressing,
             P &= 0b11111110;
         }
         *Value <<= 1;
+        (*InstructionCycle)++;
+        UpdateFlags(&temp);
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing + 1)
+    {
+        NES.RAM.Write(NES.RAM.AddressBus, *Value);
+        *InstructionCycle = 0;
+    }
+}
+void CPUClass::LSR(unsigned char *Value, unsigned int CyclesTakenForAddressing,
+                   unsigned char *InstructionCycle)
+{
+    if(*InstructionCycle == CyclesTakenForAddressing - 1)
+    {
+        (*InstructionCycle)++;
+        return;
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing)
+    {
+        if(*Value & 1)
+        {
+            P |= 1;
+        }
+        else
+        {
+            P &= 0b11111110;
+        }
+        *Value >>= 1;
         (*InstructionCycle)++;
         UpdateFlags(&temp);
     }

@@ -26,14 +26,13 @@ public:
     void Branch(unsigned char, bool);
     void UpdateFlags(unsigned char*);
     void ASL(unsigned char*, unsigned int, unsigned char *);
+    void LSR(unsigned char*, unsigned int, unsigned char *);
     void ROL(unsigned char*, unsigned int, unsigned char *);
     void ROR(unsigned char*, unsigned int, unsigned char *);
     void INC(unsigned char*, unsigned int, unsigned char *);
     void DEC(unsigned char*, unsigned int, unsigned char *);
     void NOP(unsigned char);
     void Push(unsigned char);
-    void Push(unsigned short);
     void Pull(unsigned char *);
-    void Pull(unsigned short *);
 };
 #endif
