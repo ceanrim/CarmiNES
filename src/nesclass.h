@@ -36,6 +36,9 @@ public:
     DebuggerClass      Debugger;
     unsigned char     *ROMFile;
     DWORD              ROMFileSize;
+    LARGE_INTEGER      PerformanceCounterFrequency;
+    LARGE_INTEGER      LastFrameTime;
+    LARGE_INTEGER      CurrentFrameTime;
     NESClass();
 };
 #endif

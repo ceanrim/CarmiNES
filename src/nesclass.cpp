@@ -19,8 +19,11 @@ NESClass::NESClass():
         LogFileHandle(INVALID_HANDLE_VALUE),
         Debugger(),
         ROMFile(0),
-        KIL(false)
+        KIL(false),
+        PerformanceCounterFrequency({0})
 {
+    QueryPerformanceFrequency(&PerformanceCounterFrequency);
+    PerformanceCounterFrequency.QuadPart /= 1000;
 }
 
   

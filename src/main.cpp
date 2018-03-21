@@ -1131,6 +1131,7 @@ int CALLBACK WinMain
     CheckMenuItem(GetMenu(NES.Window), ID_REGION_PAL, MF_CHECKED);
     unsigned nOfFrames = 0;
     NES.MainWindowDC = GetDC(NES.Window);
+    QueryPerformanceCounter(&NES.LastFrameTime);
     while(NES.Running) //Every iteration of this loop is a frame
     {
         MSG Message;
@@ -1194,6 +1195,21 @@ int CALLBACK WinMain
                       NES.RenderBuffer.Memory, &NES.RenderBuffer.Info,
                       DIB_RGB_COLORS, SRCCOPY);
         nOfFrames++;
+        QueryPerformanceCounter(&NES.CurrentFrameTime);
+        long long TimeElapsedMilliseconds =
+            (NES.CurrentFrameTime.QuadPart - NES.LastFrameTime.QuadPart)
+            / NES.PerformanceCounterFrequency.QuadPart;
+        timeBeginPeriod(1);
+        char MessageToLog[] = "Frame took nnnnnnnnnn milliseconds.";
+        UnsignedtoString(TimeElapsedMilliseconds, &MessageToLog[11]);
+        MessageToLog[21] = ' ';
+        Log(MessageToLog);
+        if(TimeElapsedMilliseconds > 0 && TimeElapsedMilliseconds < 17)
+        {
+            Sleep(17-TimeElapsedMilliseconds);
+        }
+        timeEndPeriod(1);
+        NES.LastFrameTime = NES.CurrentFrameTime;
     }
 quit:
     char nOfFramesInString[11];
