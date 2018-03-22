@@ -20,7 +20,8 @@ NESClass::NESClass():
         Debugger(),
         ROMFile(0),
         KIL(false),
-        PerformanceCounterFrequency({0})
+        PerformanceCounterFrequency({0}),
+        FrameCount(0)
 {
     QueryPerformanceFrequency(&PerformanceCounterFrequency);
     PerformanceCounterFrequency.QuadPart /= 1000;

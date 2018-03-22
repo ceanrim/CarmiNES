@@ -39,6 +39,8 @@ public:
     LARGE_INTEGER      PerformanceCounterFrequency;
     LARGE_INTEGER      LastFrameTime;
     LARGE_INTEGER      CurrentFrameTime;
+    unsigned           FrameCount;
+    long long          FrameTimes[64];
     NESClass();
 };
 #endif

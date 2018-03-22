@@ -1196,20 +1196,31 @@ int CALLBACK WinMain
                       DIB_RGB_COLORS, SRCCOPY);
         nOfFrames++;
         QueryPerformanceCounter(&NES.CurrentFrameTime);
-        long long TimeElapsedMilliseconds =
+        NES.FrameTimes[NES.FrameCount&63] =
             (NES.CurrentFrameTime.QuadPart - NES.LastFrameTime.QuadPart)
             / NES.PerformanceCounterFrequency.QuadPart;
+        long long TimeElapsedMilliseconds = NES.FrameTimes[NES.FrameCount&63];
+        if(NES.FrameCount && !(NES.FrameCount & 63))
+        {
+            char MessageToLog[] = "nnnnnnnnnn FPS.";
+            float FrameAverage = 0;
+            for(int i = 0; i < 64; i++)
+            {
+                FrameAverage += NES.FrameTimes[i];
+            }
+            FrameAverage /= 64;
+            UnsignedtoString(1000.f / FrameAverage, MessageToLog);
+            MessageToLog[10] = ' ';
+            Log(MessageToLog);
+        }
         timeBeginPeriod(1);
-        char MessageToLog[] = "Frame took nnnnnnnnnn milliseconds.";
-        UnsignedtoString(TimeElapsedMilliseconds, &MessageToLog[11]);
-        MessageToLog[21] = ' ';
-        Log(MessageToLog);
         if(TimeElapsedMilliseconds > 0 && TimeElapsedMilliseconds < 17)
         {
             Sleep(17-TimeElapsedMilliseconds);
         }
         timeEndPeriod(1);
         NES.LastFrameTime = NES.CurrentFrameTime;
+        NES.FrameCount++;
     }
 quit:
     char nOfFramesInString[11];
