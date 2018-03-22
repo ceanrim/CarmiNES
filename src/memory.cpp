@@ -24,6 +24,10 @@ unsigned char MemoryClass::Read(unsigned short Address)
     {
         return NES.InternalMemory[Address % 0x800];
     }
+    else if(Address == 0x2002)
+    {
+        return 0xFF;
+    }
     else if((Address >= 0x6000) && (Address < 0x8000))
     {
         return NES.WRAM[Address - 0x6000];

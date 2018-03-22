@@ -1446,6 +1446,69 @@ void CPUClass::RunCycle(unsigned char FuncCurrentInstruction, unsigned char Func
             InstructionCycle = 0;
             break;
         }
+        case 0x07: //SLO xx
+        {
+            int a = InstructionCycle;
+            NES.RAM.Read(0, &InstructionCycle,
+                         ADDR_ZERO_PAGE, &temp);
+            InstructionCycle = a;
+            SLO(&temp, 3, &InstructionCycle);
+            break;
+        }
+        case 0x17: //SLO xx+X
+        {
+            int a = InstructionCycle;
+            NES.RAM.Read(0, &InstructionCycle,
+                         ADDR_ZERO_PAGE_X, &temp);
+            InstructionCycle = a;
+            SLO(&temp, 4, &InstructionCycle);
+            break;
+        }
+        case 0x0F: //SLO xxxx
+        {
+            int a = InstructionCycle;
+            NES.RAM.Read(0, &InstructionCycle,
+                         ADDR_ABSOLUTE, &temp);
+            InstructionCycle = a;
+            SLO(&temp, 4, &InstructionCycle);
+            break;
+        }
+        case 0x1F: //SLO xxxx+X
+        {
+            int a = InstructionCycle;
+            NES.RAM.Read(0, &InstructionCycle,
+                         ADDR_ABSOLUTE_X, &temp);
+            InstructionCycle = a;
+            SLO(&temp, 5, &InstructionCycle);
+            break;
+        }
+        case 0x1B: //SLO xxxx+Y
+        {
+            int a = InstructionCycle;
+            NES.RAM.Read(0, &InstructionCycle,
+                         ADDR_ABSOLUTE_Y, &temp);
+            InstructionCycle = a;
+            SLO(&temp, 5, &InstructionCycle);
+            break;
+        }
+        case 0x03: //SLO (xx)+X
+        {
+            int a = InstructionCycle;
+            NES.RAM.Read(0, &InstructionCycle,
+                         ADDR_INDIRECT_X, &temp);
+            InstructionCycle = a;
+            SLO(&temp, 6, &InstructionCycle);
+            break;
+        }
+        case 0x13: //SLO (xx+Y)
+        {
+            int a = InstructionCycle;
+            NES.RAM.Read(0, &InstructionCycle,
+                         ADDR_INDIRECT_Y, &temp);
+            InstructionCycle = a;
+            SLO(&temp, 6, &InstructionCycle);
+            break;
+        }
         default: //This is not supposed to happen
         {
             return;
@@ -1703,6 +1766,35 @@ void CPUClass::DEC(unsigned char* Value, unsigned int CyclesTakenForAddressing,
         (*InstructionCycle) = 0;
     }
 }
+void CPUClass::SLO(unsigned char* Value, unsigned int CyclesTakenForAddressing,
+                   unsigned char* InstructionCycle)
+{
+    if(*InstructionCycle < CyclesTakenForAddressing)
+    {
+        (*InstructionCycle)++;
+    }
+    else if(*InstructionCycle == CyclesTakenForAddressing)
+    {
+        (*InstructionCycle)++;
+        if(*Value & 128)
+        {
+            P |= 1;
+        }
+        else
+        {
+            P &= 0b11111110;
+        }
+        (*Value) <<= 1;
+        A |= (*Value);
+        UpdateFlags(&A);
+    }
+    else
+    {
+        NES.RAM.Write(NES.RAM.AddressBus, *Value);
+        (*InstructionCycle) = 0;
+    }
+}
+
 void CPUClass::UpdateFlags(unsigned char *Register)
 {
     if(*Register)

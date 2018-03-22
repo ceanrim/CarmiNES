@@ -1031,6 +1031,22 @@ LRESULT CALLBACK MainWindowCallback
             }
             break;
         }
+        case WM_SYSCOMMAND:
+        {
+            switch(wParam & 0xfff0)
+            {
+                case SC_MONITORPOWER:
+                case SC_SCREENSAVE:
+                {
+                    return 0;
+                    break;
+                }
+                default:
+                {
+                    return DefWindowProc(hWnd, uMsg, wParam, lParam);
+                }
+            }
+        }
         case WM_CLOSE:
         case WM_DESTROY:
         case WM_QUIT:

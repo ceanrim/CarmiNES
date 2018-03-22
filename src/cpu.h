@@ -31,6 +31,7 @@ public:
     void ROR(unsigned char*, unsigned int, unsigned char *);
     void INC(unsigned char*, unsigned int, unsigned char *);
     void DEC(unsigned char*, unsigned int, unsigned char *);
+    void SLO(unsigned char*, unsigned int, unsigned char *);
     void NOP(unsigned char);
     void Push(unsigned char);
     void Pull(unsigned char *);
