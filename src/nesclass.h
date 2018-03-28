@@ -41,6 +41,7 @@ public:
     LARGE_INTEGER      CurrentFrameTime;
     unsigned           FrameCount;
     long long          FrameTimes[64];
+    unsigned long long FrameCycle;
     NESClass();
 };
 #endif

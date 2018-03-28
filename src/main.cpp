@@ -812,50 +812,13 @@ LRESULT CALLBACK DebuggerProc
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
                 }
-                case IDC_CYCLE:
-                {
-                    if(NES.CPU.InstructionCycle == 0)
-                    {
-                        NES.CPU.PC = NES.CPU.PCTemp;
-                        NES.CPU.CurrentInstruction = NES.RAM.Read(NES.CPU.PCTemp);
-                        NES.CPU.InstructionCycle++;
-                        NES.CPU.CurrentCycle++;
-                        ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
-                        NES.CPU.PCTemp++;
-                    }
-                    else
-                    {
-                        NES.CPU.RunCycle(NES.CPU.CurrentInstruction, NES.CPU.InstructionCycle);
-                        NES.CPU.CurrentCycle++;
-                    }
-                    ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               NES.Debugger.CurrentMemoryAddress);
-                    ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
-                                  ID_STATIC_S, ID_STATIC_P);
-                    break;
-                }
                 case IDC_INSTRUCTION:
                 {
                     if(!NES.KIL)
                     {
-                        do
-                        {
-                            if(NES.CPU.InstructionCycle == 0)
-                            {
-                                NES.CPU.PC = NES.CPU.PCTemp;
-                                NES.CPU.CurrentInstruction = NES.RAM.Read(NES.CPU.PCTemp);
-                                NES.CPU.InstructionCycle++;
-                                NES.CPU.CurrentCycle++;
-                                ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
-                                NES.CPU.PCTemp++;
-                            }
-                            else
-                            {
-                                NES.CPU.RunCycle(NES.CPU.CurrentInstruction, NES.CPU.InstructionCycle);
-                                NES.CPU.CurrentCycle++;
-                            }
-                        } while(NES.CPU.InstructionCycle != 0 && !NES.KIL);
+                        NES.CPU.Run();
                     }
+                    ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
                     ShowMemory(hWnd, ID_STATIC_MEMORY,
                                NES.Debugger.CurrentMemoryAddress);
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
@@ -1057,7 +1020,6 @@ LRESULT CALLBACK MainWindowCallback
         }
         case WM_PAINT:
         {
-            TestRender(NES.Debugger.isDebuggerActive);
             RECT ClientRect;
             GetClientRect(NES.Window, &ClientRect);
             StretchDIBits(NES.MainWindowDC,
@@ -1097,6 +1059,7 @@ int CALLBACK WinMain
     NES.RenderBuffer.Info.bmiHeader.biCompression = BI_RGB;
     NES.RenderBuffer.Memory =
         VirtualAlloc(0, 4 * 720 * 1280, MEM_COMMIT, PAGE_READWRITE);
+    memset(NES.RenderBuffer.Memory, 0, 4 * 720 * 1280);
     
     if(!CreateLogFile())
     {
@@ -1178,28 +1141,18 @@ int CALLBACK WinMain
             //HERE LIETH THE CPU LOOP:
             while(true)
             {
-                if(NES.CPU.CurrentCycle ==                                                        /*The frame is over,    */
+                if(NES.FrameCycle >=                                                        /*The frame is over,    */
                    NTSC_CYCLE_COUNT+((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*NES.Region))    /*we pass on to the next*/
                 {
-                    NES.CPU.CurrentCycle -=
+                    NES.FrameCycle -=
                         (NTSC_CYCLE_COUNT+
                          ((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*NES.Region));
                     break;
                 }
-                if(NES.CPU.InstructionCycle == 0) //We fetch a new instruction
-                {
-                    NES.CPU.PC = NES.CPU.PCTemp;
-                    NES.CPU.CurrentInstruction = NES.RAM.Read(NES.CPU.PC);
-                    NES.CPU.InstructionCycle++;
-                    NES.CPU.CurrentCycle++;
-                    NES.CPU.PCTemp++;
-                    continue;
-                }
-                NES.CPU.RunCycle(NES.CPU.CurrentInstruction, NES.CPU.InstructionCycle);
-                NES.CPU.CurrentCycle++; /*A new cycle starts*/
+                NES.CPU.Run();
             }
         }
-        TestRender(NES.Debugger.isDebuggerActive?1:0);
+        
         RECT ClientRect;
         GetClientRect(NES.Window, &ClientRect);
         StretchDIBits(NES.MainWindowDC,

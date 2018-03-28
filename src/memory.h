@@ -23,23 +23,18 @@ class MemoryClass
 {
 private:
     unsigned short temp; //Need it for indexed indirect
-    bool AddressCarry;
 public:
-    MemoryClass();
+    bool AddressCarry;
     unsigned char Read(unsigned short); //Reads the memory
                                         //at the corresponding address
     unsigned char ReadWithNoSideEffects(unsigned short);
-    void Read(unsigned short address,   //Processes addressing modes
-              unsigned char* cycle,     //in a cycle-accurate way
-              unsigned char  addrMode,
+    void Read(unsigned char  addrMode,
               unsigned char* valueToRewrite);
     void Write(unsigned short address,
                unsigned char valueToWrite);
-    void Write(unsigned char valueToWrite,
-               unsigned char* cycle,
-               unsigned char addrMode);
+    void WriteAddrMode(unsigned char valueToWrite,
+                       unsigned char addrMode);
     unsigned short AddressBus; //To hold data between cycles
-    unsigned char ConversionTable[8]; //for xxxxxx00 instructions
     unsigned short Mapper;
     unsigned short PRGROMSize;
 };
