@@ -360,6 +360,7 @@ bool LoadROM(char *path)
     if(NES.ROMFile)
     {
         VirtualFree(NES.ROMFile, NES.ROMFileSize, MEM_RELEASE);
+        NES.RAM.Destroy();
     }
     HANDLE FileHandle = CreateFile(path,
                                    GENERIC_READ,
@@ -398,17 +399,10 @@ bool LoadROM(char *path)
         return false;
     }
     NES.RAM.PRGROMSize = FileMemoryChar[4] << 14;
-    if((NES.RAM.PRGROMSize != 16384) && (NES.RAM.PRGROMSize != 32768))
-    {
-        MessageBox(0, TEXT("Mapper 0 file of size different from 16k or 32k."),
-                   TEXT("Error"), MB_OK);
-        return false;
-    }
-    if(0/*NES.ROMFileSize != (NES.RAM.PRGROMSize + 16)*/)
-    {
-        MessageBox(0, TEXT("Invalid NES file."), TEXT("Error"), MB_OK);
-        return false;
-    }
+    NES.PPU.CHRROMSize = FileMemoryChar[5] << 13;
+    NES.PPU.Mirroring  = (FileMemoryChar[6] & 9);
+    NES.RAM.Init(NES.RAM.Mapper);
+    NES.PPU.Init(NES.RAM.Mapper);
     CloseHandle(FileHandle);
     IsAROMLoaded = true;
     NES.CPU.Reset();
@@ -720,8 +714,8 @@ void ShowMemory(HWND hWnd, int Control, unsigned short Address)
 void ShowRegisters(HWND hWnd, int AControl, int XControl, int YControl,
                    int SControl, int PControl)
 {
-    char string[6];
-    memset((void*)string, 0, 6);
+    char string[12];
+    memset((void*)string, 0, 12);
     string[0] = 'A';
     string[1] = ':';
     string[2] = ' ';
@@ -736,9 +730,117 @@ void ShowRegisters(HWND hWnd, int AControl, int XControl, int YControl,
     string[0] = 'S';
     UchartoHex(NES.CPU.S, string+3, false);
     SetDlgItemText(hWnd, SControl, string);
-    string[0] = 'P';
-    UchartoHex(NES.CPU.P, string+3, false);
+    string[0]  = 'P';
+    string[3]  = (NES.CPU.N)?'N':'n';
+    string[4]  = (NES.CPU.V)?'V':'v';
+    string[5]  = string[6] = '-';
+    string[7]  = (NES.CPU.D)?'D':'d';
+    string[8]  = (NES.CPU.I)?'I':'i';
+    string[9]  = (NES.CPU.Z)?'Z':'z';
+    string[10] = (NES.CPU.C)?'C':'c';
     SetDlgItemText(hWnd, PControl, string);
+}
+
+void RefreshCHRROMViewer()
+{
+    if(NES.ROMFile)
+    {
+        for(int i = 0; i < 2; i++) //Pattern tables
+        {
+            for(int j = 0; j < 16; j++) //Tile rows
+            {
+                for(int k = 0; k < 16; k++) //Tile columns
+                {
+                    for(int m = 0; m < 8; m++) //Rows
+                    {
+                        unsigned Address = (j << 8) | (k << 4) | m;
+                        for(int n = 0; n < 8; n++) //Pixels
+                        {
+                            unsigned ColorLowBit =
+                                NES.PPU.PatternTables[i][Address];
+                            ColorLowBit &= (1 << (7 - n));
+                            ColorLowBit >>= (7 - n); 
+                            unsigned ColorHighBit =
+                                NES.PPU.PatternTables[i][Address+8];
+                            ColorHighBit &= (1 << (7 - n));
+                            ColorHighBit >>= (7 - n);
+                            ColorHighBit <<= 1;
+                            unsigned Color = (ColorLowBit | ColorHighBit);
+                            NES.Debugger.PatternTablesRendered
+                                [((i * 128 + j * 8 + m) * 128) +
+                                 (k * 8 + n)] =
+                                NES.Debugger.Greys[Color];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+LRESULT CALLBACK CHRROMViewerProc
+(HWND hWnd,
+ UINT uMsg,
+ WPARAM wParam,
+ LPARAM lParam)
+{
+    switch(uMsg)
+    {
+        case WM_COMMAND:
+        {
+            switch(wParam & 0xFFF)
+            {
+                default:
+                {
+                    return FALSE;
+                }
+            }
+        }
+        case WM_INITDIALOG:
+        {
+            NES.Debugger.PatternTablesRendered = (unsigned *)
+                VirtualAlloc(0, 4 * 256 * 128,
+                             MEM_COMMIT,
+                             PAGE_READWRITE);
+            RefreshCHRROMViewer();
+            return TRUE;
+        }
+        case WM_PAINT:
+        {
+            RefreshCHRROMViewer();
+            HDC DeviceContext = GetDC(hWnd);
+            RECT ClientRect;
+            GetClientRect(hWnd, &ClientRect);
+            StretchDIBits(DeviceContext,
+                          0, 0,
+                          ClientRect.right - ClientRect.left,
+                          ClientRect.bottom - ClientRect.top,
+                          0, 0, 128, 256,
+                          NES.Debugger.PatternTablesRendered,
+                          &NES.Debugger.PTRInfo,
+                          DIB_RGB_COLORS, SRCCOPY);
+            ReleaseDC(hWnd, DeviceContext);
+            return TRUE;
+        }
+        case WM_CLOSE:
+        case WM_DESTROY:
+        {
+            if(NES.Debugger.PatternTablesRendered)
+            {
+                VirtualFree(NES.Debugger.PatternTablesRendered,
+                            4 * 128 * 256, MEM_RELEASE);
+                NES.Debugger.PatternTablesRendered = 0;
+            }
+            DestroyWindow(hWnd);
+            NES.Debugger.CHRROMViewerHandle = 0;
+            NES.Debugger.isCHRROMViewerOpen = false;
+            return TRUE;
+        }
+        default:
+        {
+            return FALSE;
+        }
+    }
 }
 
 LRESULT CALLBACK DebuggerProc
@@ -824,6 +926,21 @@ LRESULT CALLBACK DebuggerProc
                     ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
+                }
+                case ID_PPU_CHRROM:
+                {
+                    if(!NES.Debugger.isCHRROMViewerOpen)
+                    {
+                        NES.Debugger.CHRROMViewerHandle =
+                            CreateDialog(GetModuleHandle(NULL),
+                                         MAKEINTRESOURCE(IDD_CHRROM),
+                                         hWnd, CHRROMViewerProc);
+                        if(NES.Debugger.CHRROMViewerHandle)
+                        {
+                            ShowWindow(NES.Debugger.CHRROMViewerHandle, SW_SHOW);
+                            NES.Debugger.isCHRROMViewerOpen = true;
+                        }
+                    }
                 }
                 default:
                 {
@@ -1048,18 +1165,18 @@ int CALLBACK WinMain
 {
     NES = NESClass();
     NES.LogFileHandle = INVALID_HANDLE_VALUE;
-    NES.RenderBuffer.Width                        = 1280;
-    NES.RenderBuffer.Height                       = 720;
+    NES.RenderBuffer.Width                        = 256;
+    NES.RenderBuffer.Height                       = -262;
     NES.RenderBuffer.Info.bmiHeader.biSize        =
         sizeof(NES.RenderBuffer.Info.bmiHeader);
-    NES.RenderBuffer.Info.bmiHeader.biWidth       = 1280;
-    NES.RenderBuffer.Info.bmiHeader.biHeight      = -720;
+    NES.RenderBuffer.Info.bmiHeader.biWidth       = 256;
+    NES.RenderBuffer.Info.bmiHeader.biHeight      = -262;
     NES.RenderBuffer.Info.bmiHeader.biPlanes      = 1;
     NES.RenderBuffer.Info.bmiHeader.biBitCount    = 32;
     NES.RenderBuffer.Info.bmiHeader.biCompression = BI_RGB;
     NES.RenderBuffer.Memory =
-        VirtualAlloc(0, 4 * 720 * 1280, MEM_COMMIT, PAGE_READWRITE);
-    memset(NES.RenderBuffer.Memory, 0, 4 * 720 * 1280);
+        VirtualAlloc(0, 4 * 256 * 262, MEM_COMMIT, PAGE_READWRITE);
+    memset(NES.RenderBuffer.Memory, 0, 4 * 256 * 262);
     
     if(!CreateLogFile())
     {
@@ -1141,7 +1258,7 @@ int CALLBACK WinMain
             //HERE LIETH THE CPU LOOP:
             while(true)
             {
-                if(NES.FrameCycle >=                                                        /*The frame is over,    */
+                if(NES.FrameCycle >=                                                    /*The frame is over,    */
                    NTSC_CYCLE_COUNT+((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*NES.Region))    /*we pass on to the next*/
                 {
                     NES.FrameCycle -=

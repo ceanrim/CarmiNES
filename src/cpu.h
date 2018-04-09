@@ -9,18 +9,19 @@
 class CPUClass
 {
 public:
-    unsigned char A, X, Y, S, P; //The CPU's registers
+    unsigned char A, X, Y, S; //The CPU's registers
     unsigned short PC;
+    bool N, V, D, I, Z, C; //The CPU status flags
     unsigned char CurrentInstruction; //The instruction we're running
 private:
     unsigned short AddressBus;
-    unsigned char temp;
-    unsigned char addrMode;
+    unsigned char  temp;
+    unsigned char  addrMode;
 public:
     void Run();
     void Reset();
     void CMP(unsigned char*, unsigned char);
-    void Branch(unsigned char, bool);
+    void Branch(bool, bool);
     void UpdateFlags(unsigned char);
     void ASL(unsigned char*);
     void LSR(unsigned char*);

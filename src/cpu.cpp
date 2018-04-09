@@ -10,6 +10,28 @@
 //NOTE to Carmine: You're refactoring the push instructions
 void CPUClass::Run()
 {
+    if(NES.NMI)
+    {
+        NES.NMI = false;
+        NES.RAM.Write(0x100+S,
+                      (unsigned char)((unsigned short)PC >> 8));
+        S--;
+        NES.RAM.Write(0x100+S, (unsigned char)PC);
+        S--;
+        unsigned char P = 0;
+        if(C) P |= 1;
+        if(Z) P |= 2;
+        if(I) P |= 4;
+        if(D) P |= 8;
+              P |= 32;
+        if(V) P |= 64;
+        if(N) P |= 128;
+        NES.RAM.Write(0x100+S, P);
+        S--;
+        PC = NES.RAM.Read(0xFFFE);
+        PC |= (unsigned char)(NES.RAM.Read(0xFFFF) << 8);
+        NEXT_CYCLES(7);
+    }
     CurrentInstruction = NES.RAM.Read(PC);
     PC++;
     NEXT_CYCLE;
@@ -17,37 +39,37 @@ void CPUClass::Run()
     {
         case 0x18: //CLC
         {
-            P &= 0b11111110;
+            C = false;
             NEXT_CYCLE;
         } break;
         case 0x38: //SEC
         {
-            P |= 1;
+            C = true;
             NEXT_CYCLE;
         } break;
         case 0x58: //CLI
         {
-            P &= 0b11111011;
+            I = false;
             NEXT_CYCLE;
         } break;
         case 0x78: //SEI
         {
-            P |= 4;
+            I = true;
             NEXT_CYCLE;
         } break;
         case 0xB8: //CLV
         {
-            P &= 0b10111111;
+            V = false;
             NEXT_CYCLE;
         } break;
         case 0xD8: //CLD
         {
-            P &= 0b11110111;
+            D = false;
             NEXT_CYCLE;
         } break;
         case 0xF8: //SED
         {
-            P |= 8;
+            D = true;
             NEXT_CYCLE;
         } break;
 
@@ -128,11 +150,11 @@ void CPUClass::Run()
             UpdateFlags(a);
             if(a & 0b01000000)
             {
-                P |= 0b01000000;
+                V = true;
             }
             else
             {
-                P &= 0b10111111;
+                V = false;
             }
             break;
         }
@@ -144,11 +166,11 @@ void CPUClass::Run()
             UpdateFlags(a);
             if(a & 0b01000000)
             {
-                P |= 0b01000000;
+                V = true;
             }
             else
             {
-                P &= 0b10111111;
+                V = false;
             }
             break;
         }
@@ -244,42 +266,42 @@ void CPUClass::Run()
         
         case 0x90: //BCC
         {
-            Branch(1, true);
+            Branch(C, true);
             break;
         }
         case 0xB0: //BCS
         {
-            Branch(1, false);
+            Branch(C, false);
             break;
         }
         case 0xD0: //BNE
         {
-            Branch(2, true);
+            Branch(Z, true);
             break;
         }
         case 0xF0: //BEQ
         {
-            Branch(2, false);
+            Branch(Z, false);
             break;
         }
         case 0x10: //BPL
         {
-            Branch(128, true);
+            Branch(N, true);
             break;
         }
         case 0x30: //BMI
         {
-            Branch(128, false);
+            Branch(N, false);
             break;
         }
         case 0x50: //BVC
         {
-            Branch(64, true);
+            Branch(V, true);
             break;
         }
         case 0x70: //BVS
         {
-            Branch(64, false);
+            Branch(V, false);
             break;
         }
 
@@ -355,6 +377,15 @@ void CPUClass::Run()
         }
         case 0x08: //PHP
         {
+            unsigned char P = 0;
+            if(C) P |= 1;
+            if(Z) P |= 2;
+            if(I) P |= 4;
+            if(D) P |= 8;
+                  P |= 16;
+                  P |= 32;
+            if(V) P |= 64;
+            if(N) P |= 128;
             Push(P);
             break;
         }
@@ -366,7 +397,14 @@ void CPUClass::Run()
         }
         case 0x28: //PLP
         {
+            unsigned char P;
             Pull(&P);
+            C = (P & 1)  ? true: false;
+            Z = (P & 2)  ? true: false;
+            I = (P & 4)  ? true: false;
+            D = (P & 8)  ? true: false;
+            V = (P & 64) ? true: false;
+            N = (P & 128)? true: false;
             break;
         }
 
@@ -421,8 +459,17 @@ void CPUClass::Run()
             NES.RAM.Write(0x100+S, (unsigned char)(PCToPush));
             S--;
             NEXT_CYCLE;
-            
-            NES.RAM.Write(0x100+S, P|0b00110000);
+
+            unsigned char P = 0;
+            if(C) P |= 1;
+            if(Z) P |= 2;
+            if(I) P |= 4;
+            if(D) P |= 8;
+                  P |= 16;
+                  P |= 32;
+            if(V) P |= 64;
+            if(N) P |= 128;
+            NES.RAM.Write(0x100+S, P);
             S--;
             NEXT_CYCLE;
             
@@ -430,7 +477,7 @@ void CPUClass::Run()
             NEXT_CYCLE;
             
             PC |= (unsigned short)(NES.RAM.Read(0xFFFF) << 8);
-            P &= 0b11111011;
+            I = true;
             NEXT_CYCLE;
             
             break;
@@ -440,7 +487,13 @@ void CPUClass::Run()
             NEXT_CYCLES(2);
                         
             S++;
-            P = (NES.RAM.Read(0x100+S) & 0b11001111);
+            unsigned char P = (NES.RAM.Read(0x100+S) & 0b11001111);
+            C = (P & 1)  ? true: false;
+            Z = (P & 2)  ? true: false;
+            I = (P & 4)  ? true: false;
+            D = (P & 8)  ? true: false;
+            V = (P & 64) ? true: false;
+            N = (P & 128)? true: false;
             NEXT_CYCLE;
             
             S++;
@@ -530,50 +583,21 @@ void CPUClass::Run()
             bool Overflow = false;
             if(((unsigned short)A
                 + (unsigned short)temp
-                + (unsigned short)(P & 1)) >= 256)
+                + (unsigned short)(C? 1: 0)) >= 256)
             {
                 Carry = true;
             }
-            if((A^(A+temp+(P & 1))) &
-               (temp^(A+temp+(P & 1))) &
+            if((A^(A+temp+(C? 1: 0))) &
+               (temp^(A+temp+(C? 1: 0))) &
                0x80)
             {
                 Overflow = true;
             }
             A += temp;
-            A += (P & 1);
-            if(Carry)
-            {
-                P |= 1;
-            }
-            else
-            {
-                P &= 0b11111110;
-            }
-            if(Overflow)
-            {
-                P |= 64;
-            }
-            else
-            {
-                P &= 0b10111111;
-            }
-            if(A == 0)
-            {
-                P |= 2;
-            }
-            else
-            {
-                P &= 0b11111101;
-            }
-            if(A & 128)
-            {
-                P |= 128;
-            }
-            else
-            {
-                P &= 127;
-            }
+            A += (C? 1: 0);
+            C = Carry;
+            V = Overflow;
+            UpdateFlags(A);
         } break;
 
 
@@ -652,51 +676,22 @@ void CPUClass::Run()
             bool Overflow = false;
             if((unsigned short)((unsigned short)A
                                 + (unsigned short)(~temp & 255)
-                                + (unsigned short)(P & 1))
+                                + (unsigned short)(C? 1: 0))
                >= 256)
             {
                 Carry = true;
             }
-            if((A^(A+~temp+(P & 1))) &
-               (~temp^(A+~temp+(P & 1))) &
+            if((A^(A+~temp+(C? 1: 0))) &
+               (~temp^(A+~temp+(C? 1: 0))) &
                0x80)
             {
                 Overflow = true;
             }
             A += ~temp;
-            A += (P & 1);
-            if(Carry)
-            {
-                P |= 1;
-            }
-            else
-            {
-                P &= 0b11111110;
-            }
-            if(Overflow)
-            {
-                P |= 64;
-            }
-            else
-            {
-                P &= 0b10111111;
-            }
-            if(A == 0)
-            {
-                P |= 2;
-            }
-            else
-            {
-                P &= 0b11111101;
-            }
-            if(A & 128)
-            {
-                P |= 128;
-            }
-            else
-            {
-                P &= 127;
-            }
+            A += (C? 1: 0);
+            C = Carry;
+            V = Overflow;
+            UpdateFlags(A);
         } break;
                 
 
@@ -797,11 +792,11 @@ void CPUClass::Run()
         {
             if(A & 128)
             {
-                P |= 1;
+                C = true;
             }
             else
             {
-                P &= 0b11111110;
+                C = false;
             }
             A <<= 1;
             UpdateFlags(A);
@@ -847,11 +842,11 @@ void CPUClass::Run()
         {
             if(A & 1)
             {
-                P |= 1;
+                C = true;
             }
             else
             {
-                P &= 0b11111110;
+                C = false;
             }
             A >>= 1;
             UpdateFlags(A);
@@ -889,14 +884,14 @@ void CPUClass::Run()
         
         case 0x2A: //ROL A
         {
-            unsigned char temp_ = (P & 1);
+            unsigned char temp_ = (C? 1: 0);
             if(A & 128)
             {
-                P |= 1;
+                C = true;
             }
             else
             {
-                P &= 0b11111110;
+                C = false;
             }
             A <<= 1;
             if(temp_)
@@ -948,14 +943,14 @@ void CPUClass::Run()
         
         case 0x6A: //ROR A
         {
-            unsigned char temp_ = (P & 1);
+            unsigned char temp_ = (C? 1: 0);
             if(A & 1)
             {
-                P |= 1;
+                C = true;
             }
             else
             {
-                P &= 0b11111110;
+                C = false;
             }
             A >>= 1;
             if(temp_)
@@ -1198,33 +1193,33 @@ void CPUClass::CMP(unsigned char *Register, unsigned char addrMode)
     NES.RAM.Read(addrMode, &temp);
     if(((*Register)-(temp)) & 128)
     {
-        P |= 128;
+        N = true;
     }
     else
     {
-        P &= 127;
+        N = false;
     }
     if(*Register == temp)
     {
-        P |= 2;
+        Z = true;
     }
     else
     {
-        P &= 0b11111101;
+        Z = false;
     }
     if(temp <= *Register)
     {
-        P |= 1;
+        C = true;
     }
     else
     {
-        P &= 0b11111110;
+        C = false;
     }
 }
 
 
 
-void CPUClass::Branch(unsigned char flag, bool clear)
+void CPUClass::Branch(bool flag, bool clear)
 {
     int CyclesToTake = 0;
     temp = NES.RAM.Read(PC);
@@ -1232,14 +1227,14 @@ void CPUClass::Branch(unsigned char flag, bool clear)
     NEXT_CYCLE;
     if(clear)
     {
-        if(P & flag)
+        if(flag)
         {
             return;
         }
     }
     else
     {
-        if(!(P & flag))
+        if(!flag)
         {
             return;
         }
@@ -1267,11 +1262,11 @@ void CPUClass::ASL(unsigned char *Value)
 {
     if(*Value & 128)
     {
-        P |= 1;
+        C = true;
     }
     else
     {
-        P &= 0b11111110;
+        C = false;
     }
     *Value <<= 1;
     UpdateFlags(temp);
@@ -1287,11 +1282,11 @@ void CPUClass::LSR(unsigned char *Value)
 {
     if(*Value & 1)
     {
-        P |= 1;
+        C = true;
     }
     else
     {
-        P &= 0b11111110;
+        C = false;
     }
     *Value >>= 1;
     UpdateFlags(temp);
@@ -1305,14 +1300,14 @@ void CPUClass::LSR(unsigned char *Value)
 
 void CPUClass::ROL(unsigned char *Value)
 {
-    unsigned char temp_ = (P & 1);
+    unsigned char temp_ = (C? 1: 0);
     if(*Value & 128)
     {
-        P |= 1;
+        C = true;
     }
     else
     {
-        P &= 0b11111110;
+        C = false;
     }
     *Value <<= 1;
     if(temp_)
@@ -1334,14 +1329,14 @@ void CPUClass::ROL(unsigned char *Value)
 
 void CPUClass::ROR(unsigned char *Value)
 {
-    unsigned char temp_ = (P & 1);
+    unsigned char temp_ = (C? 1: 0);
     if(*Value & 1)
     {
-        P |= 1;
+        C = true;
     }
     else
     {
-        P &= 0b11111110;
+        C = false;
     }
     *Value >>= 1;
     if(temp_)
@@ -1389,11 +1384,11 @@ void CPUClass::SLO(unsigned char* Value)
 {
     if(*Value & 128)
     {
-        P |= 1;
+        C = true;
     }
     else
     {
-        P &= 0b11111110;
+        C = false;
     }
     (*Value) <<= 1;
     A |= (*Value);
@@ -1410,19 +1405,19 @@ void CPUClass::UpdateFlags(unsigned char Register)
 {
     if(Register)
     {
-        P &= 0b11111101;
+        Z = false;
     }
     else
     {
-        P |= 2;
+        Z = true;
     }
     if(Register & 128)
     {
-        P |= 128;
+        N = true;
     }
     else
     {
-        P &= 127;
+        N = false;
     }
 }
 
@@ -1467,7 +1462,8 @@ void CPUClass::Reset()
     PC = NES.RAM.Read(0xFFFC);
     PC |= (((unsigned short)(NES.RAM.Read(0xFFFD))) << 8);
     NES.FrameCycle = 7;
-    P = 0x34;
+    N = V = D = Z = C = false;
+    I = true;
     A = 0;
     X = 0;
     Y = 0;

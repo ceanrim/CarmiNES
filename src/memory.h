@@ -22,9 +22,12 @@
 class MemoryClass
 {
 private:
-    unsigned short temp; //Need it for indexed indirect
+    unsigned short  temp; //Need it for indexed indirect
+    unsigned char*  PRGROMPages[2];
 public:
     bool AddressCarry;
+    void Init(unsigned short);
+    void Destroy();
     unsigned char Read(unsigned short); //Reads the memory
                                         //at the corresponding address
     unsigned char ReadWithNoSideEffects(unsigned short);

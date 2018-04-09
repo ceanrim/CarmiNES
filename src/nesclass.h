@@ -8,6 +8,7 @@
 #define NESCLASS_H
 #include "cpu.h"
 #include "debuggerclass.h"
+#include "ppu.h"
 class RenderBufferClass
 {
 public:
@@ -21,6 +22,7 @@ class NESClass
 public:
     CPUClass           CPU;
     MemoryClass        RAM;
+    PPUClass           PPU;
     int                Region;
     float              Speed;
     bool               Running;
@@ -41,7 +43,9 @@ public:
     LARGE_INTEGER      CurrentFrameTime;
     unsigned           FrameCount;
     long long          FrameTimes[64];
+    unsigned long long MasterCycle;
     unsigned long long FrameCycle;
+    bool               NMI;
     NESClass();
 };
 #endif

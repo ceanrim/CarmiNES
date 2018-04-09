@@ -4,10 +4,35 @@
    $Revision: $
    $Creator: Carmine Foggia $
    ======================================================================== */
+#include <windows.h>
 #include "memory.h"
 #include "cpu.h"
 #include "main.h"
-#define NEXT_CYCLE NES.FrameCycle += (NES.Region == NTSC)? 15: 16
+
+void MemoryClass::Init(unsigned short Mapper_)
+{
+    switch(Mapper_)
+    {
+        case 0: //NROM
+        {
+            if(PRGROMSize == 16384)
+            {
+                PRGROMPages[0] = NES.ROMFile + 16;
+                PRGROMPages[1] = NES.ROMFile + 16;
+            }
+            else if(PRGROMSize == 32768)
+            {
+                PRGROMPages[0] = NES.ROMFile + 16;
+                PRGROMPages[1] = NES.ROMFile + 16 + 16384;
+            }
+        }
+    }
+}
+
+void MemoryClass::Destroy()
+{
+}
+
 unsigned char MemoryClass::Read(unsigned short Address)
 /*NES memory structure:
   0x0000-0x07ff Internal Memory
@@ -18,34 +43,23 @@ unsigned char MemoryClass::Read(unsigned short Address)
     {
         return NES.InternalMemory[Address % 0x800];
     }
-    else if(Address == 0x2002)
-    {
-        return 0xFF;
-    }
     else if((Address >= 0x6000) && (Address < 0x8000))
     {
         return NES.WRAM[Address - 0x6000];
     }
     else if((Address >= 0x8000) && (Address < 0xC000))
     {
-        return NES.CartridgeMemory[Address - 0x8000];
+        return NES.RAM.PRGROMPages[0][Address - 0x8000];
     }
     else if(Address >= 0xC000)
     {
-        if(this->Mapper == 0)
-        {
-            if(PRGROMSize == 16384)
-            {
-                return NES.CartridgeMemory[Address - 0xC000];
-            }
-            else if(PRGROMSize == 32768)
-            {
-                return NES.CartridgeMemory[Address - 0x8000];
-            }
-        }
+        return NES.RAM.PRGROMPages[1][Address - 0xC000];
     }
     else
     {
+        char ErrorMessage[] = "Tried to read at $0000.";
+        UshorttoHex(Address, ErrorMessage + 18, false);
+        MessageBox(0, ErrorMessage, "Error", IDOK);
         return 0;
     }
 }
@@ -67,21 +81,11 @@ unsigned char MemoryClass::ReadWithNoSideEffects(unsigned short Address)
     }
     else if((Address >= 0x8000) && (Address < 0xC000))
     {
-        return NES.CartridgeMemory[Address - 0x8000];
+        return NES.RAM.PRGROMPages[0][Address - 0x8000];
     }
     else if(Address >= 0xC000)
     {
-        if(this->Mapper == 0)
-        {
-            if(PRGROMSize == 16384)
-            {
-                return NES.CartridgeMemory[Address - 0xC000];
-            }
-            else if(PRGROMSize == 32768)
-            {
-                return NES.CartridgeMemory[Address - 0x8000];
-            }
-        }
+        return NES.RAM.PRGROMPages[1][Address - 0xC000];
     }
     else
     {
@@ -274,9 +278,47 @@ void MemoryClass::Write(unsigned short address,
     {
         NES.InternalMemory[address % 0x800] = valueToWrite;
     }
+    else if((address >= 0x2000) && (address < 0x4000))
+    {
+        NES.PPU.Run(NES.MasterCycle);
+        NES.PPU.IODB = valueToWrite;
+        switch(address & 8)
+        {
+            case 0:
+            {
+                NES.PPU.NametableBase = valueToWrite & 3;
+                NES.PPU.PatternTableBase = (valueToWrite & 0x10) >> 4;
+                if(valueToWrite & 11101100)
+                {
+                    char ErrorMessage[] = "Tried to write value $00 at $0000.";
+                    UchartoHex(valueToWrite, ErrorMessage + 22, false);
+                    UshorttoHex(address, ErrorMessage + 29, false);
+                    MessageBox(0, ErrorMessage, "Error", IDOK);
+                }
+                break;
+            }
+            default:
+            {
+                char ErrorMessage[] = "Tried to write value $00 at $0000.";
+                UchartoHex(valueToWrite, ErrorMessage + 22, false);
+                UshorttoHex(address, ErrorMessage + 29, false);
+                MessageBox(0, ErrorMessage, "Error", IDOK);
+            }
+        }
+    }
     else if((address >= 0x6000) && (address < 0x8000))
     {
         NES.WRAM[address - 0x6000] = valueToWrite;
+    }
+    else if(address >= 0x8000)
+    {
+    }
+    else
+    {
+        char ErrorMessage[] = "Tried to write value $00 at $0000.";
+        UchartoHex(valueToWrite, ErrorMessage + 22, false);
+        UshorttoHex(address, ErrorMessage + 29, false);
+        MessageBox(0, ErrorMessage, "Error", IDOK);
     }
 }
 void MemoryClass::WriteAddrMode(unsigned char valueToWrite,

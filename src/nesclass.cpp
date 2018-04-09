@@ -7,7 +7,7 @@
 #include "main.h"
 NESClass::NESClass():
         CPU(), RAM(),
-        Region(PAL), Speed(1.f),
+        Region(NTSC), Speed(1.f),
         Running(true),
         InternalMemory(0),
         CartridgeMemory(0),
@@ -21,7 +21,8 @@ NESClass::NESClass():
         ROMFile(0),
         KIL(false),
         PerformanceCounterFrequency({0}),
-        FrameCount(0)
+        FrameCount(0),
+        NMI(false)
 {
     QueryPerformanceFrequency(&PerformanceCounterFrequency);
     PerformanceCounterFrequency.QuadPart /= 1000;
