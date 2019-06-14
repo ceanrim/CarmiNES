@@ -441,7 +441,7 @@ void TestRender(int a)
 {
     unsigned *Row = (unsigned *)NES.RenderBuffer.Memory;
     for(int y = 0;
-        y < NES.RenderBuffer.Height;
+        y < -NES.RenderBuffer.Height;
         y++)
     {
         unsigned *Pixel = (unsigned *)Row;
@@ -874,6 +874,7 @@ LRESULT CALLBACK DebuggerProc
             DestroyWindow(hWnd);
             NES.Debugger.DebuggerHandle = 0;
             NES.Debugger.isDebuggerActive = false;
+            NES.Pause = false;
             return TRUE;
         }
         case WM_COMMAND:
@@ -914,17 +915,36 @@ LRESULT CALLBACK DebuggerProc
                                   ID_STATIC_S, ID_STATIC_P);
                     break;
                 }
-                case IDC_INSTRUCTION:
+                case ID_CPU_STEP:
                 {
-                    if(!NES.KIL)
+                    if(IsAROMLoaded)
                     {
-                        NES.CPU.Run();
+                        if(!NES.KIL)
+                        {
+                            NES.CPU.Run();
+                        }
+                        ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
+                        ShowMemory(hWnd, ID_STATIC_MEMORY,
+                                   NES.Debugger.CurrentMemoryAddress);
+                        ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
+                                      ID_STATIC_S, ID_STATIC_P);
                     }
-                    ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
-                    ShowMemory(hWnd, ID_STATIC_MEMORY,
-                               NES.Debugger.CurrentMemoryAddress);
-                    ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
-                                  ID_STATIC_S, ID_STATIC_P);
+                    break;
+                }
+                case ID_CPU_WAITUNTILNMI:
+                {
+                    if(IsAROMLoaded)
+                    {
+                        while(NES.NMI == false && !NES.KIL)
+                        {
+                            NES.CPU.Run();
+                        }
+                        ShowDisassembly(hWnd, ID_STATIC_INSTRUCTION, NES.CPU.PC);
+                        ShowMemory(hWnd, ID_STATIC_MEMORY,
+                                   NES.Debugger.CurrentMemoryAddress);
+                        ShowRegisters(hWnd, ID_STATIC_A, ID_STATIC_X, ID_STATIC_Y,
+                                      ID_STATIC_S, ID_STATIC_P);
+                    }
                     break;
                 }
                 case ID_PPU_CHRROM:
@@ -1100,6 +1120,7 @@ LRESULT CALLBACK MainWindowCallback
                         {
                             ShowWindow(NES.Debugger.DebuggerHandle, SW_SHOW);
                             NES.Debugger.isDebuggerActive = true;
+                            NES.Pause = true;
                         }
                     }
                     return 0;
@@ -1137,17 +1158,21 @@ LRESULT CALLBACK MainWindowCallback
         }
         case WM_PAINT:
         {
+            PAINTSTRUCT ps;
+            BeginPaint(hWnd, &ps);
             RECT ClientRect;
             GetClientRect(NES.Window, &ClientRect);
-            StretchDIBits(NES.MainWindowDC,
+            TestRender(0);
+            int a = StretchDIBits(NES.MainWindowDC,
                           0, 0,
                           ClientRect.right  - ClientRect.left,
                           ClientRect.bottom - ClientRect.top,
                           0, 0,
-                          NES.RenderBuffer.Width, NES.RenderBuffer.Height,
+                          NES.RenderBuffer.Width, -NES.RenderBuffer.Height,
                           NES.RenderBuffer.Memory, &NES.RenderBuffer.Info,
                           DIB_RGB_COLORS, SRCCOPY);
-            return DefWindowProc(hWnd, uMsg, wParam, lParam);
+            EndPaint(hWnd, &ps);
+            return 0;
             break;
         }
         default:
@@ -1264,12 +1289,13 @@ int CALLBACK WinMain
                     NES.FrameCycle -=
                         (NTSC_CYCLE_COUNT+
                          ((PAL_CYCLE_COUNT-NTSC_CYCLE_COUNT)*NES.Region));
+                    NES.PPU.Run(NES.FrameCycle);
                     break;
                 }
                 NES.CPU.Run();
             }
         }
-        
+        TestRender(0);
         RECT ClientRect;
         GetClientRect(NES.Window, &ClientRect);
         StretchDIBits(NES.MainWindowDC,
@@ -1277,7 +1303,7 @@ int CALLBACK WinMain
                       ClientRect.right  - ClientRect.left,
                       ClientRect.bottom - ClientRect.top,
                       0, 0,
-                      NES.RenderBuffer.Width, NES.RenderBuffer.Height,
+                      NES.RenderBuffer.Width, -NES.RenderBuffer.Height,
                       NES.RenderBuffer.Memory, &NES.RenderBuffer.Info,
                       DIB_RGB_COLORS, SRCCOPY);
         nOfFrames++;

@@ -287,7 +287,7 @@ void MemoryClass::Write(unsigned short address,
     }
     else if((address >= 0x2000) && (address < 0x4000))
     {
-        NES.PPU.Run(NES.MasterCycle);
+        NES.PPU.Run(NES.FrameCycle);
         NES.PPU.IODB = valueToWrite;
         switch(address & 8)
         {
@@ -311,6 +311,19 @@ void MemoryClass::Write(unsigned short address,
                 UshorttoHex(address, ErrorMessage + 29, false);
                 MessageBox(0, ErrorMessage, "Error", IDOK);
             }
+        }
+    }
+    else if(address == 0x4014)
+    {
+        //TODO: This skips a cycle if we start on an odd cycle
+        NEXT_CYCLE;
+        for(unsigned short i = 0; i < 256; i++)
+        {
+            unsigned short page = (unsigned short)(valueToWrite) << 8;
+            unsigned char toWrite = Read(page|i);
+            NEXT_CYCLE;
+            NES.PPU.OAM[i] = toWrite;
+            NEXT_CYCLE;
         }
     }
     else if((address >= 0x6000) && (address < 0x8000))

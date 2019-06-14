@@ -28,8 +28,8 @@ void CPUClass::Run()
         if(N) P |= 128;
         NES.RAM.Write(0x100+S, P);
         S--;
-        PC = NES.RAM.Read(0xFFFE);
-        PC |= (unsigned char)(NES.RAM.Read(0xFFFF) << 8);
+        PC = NES.RAM.Read(0xFFFA);
+        PC |= (unsigned char)(NES.RAM.Read(0xFFFB)) << 8;
         NEXT_CYCLES(7);
     }
     CurrentInstruction = NES.RAM.Read(PC);

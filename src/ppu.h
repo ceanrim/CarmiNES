@@ -23,6 +23,7 @@ public:
     unsigned char  Nametable2[1024];
     unsigned char  Nametable3[1024];
     unsigned char* PatternTables[2];
+    unsigned char  OAM[256];
     unsigned char  IODB;
     unsigned char  NametableBase;
     unsigned char  PatternTableBase;

@@ -4,6 +4,13 @@
     Revision:
     Creator: Carmine Foggia 
    ======================================================================== */
+/*TODO:
+ *Simulate PPU registers completely and properly
+ *Emulate read/write buffering
+ *Emulate sprites
+ *Emulate scanline timing
+ *PAL
+ */
 #include <windows.h>
 #include "main.h"
 #include "nesclass.h"
@@ -17,6 +24,7 @@ PPUClass::PPUClass()
 {
     NextFrameBuffer = (unsigned char *)VirtualAlloc(0, 256 * 262, MEM_COMMIT, PAGE_READWRITE);
     memset(NextFrameBuffer, 0, 240*256);
+    memset(OAM, 0, 256);
     Register2002 = 0;
 }
 
