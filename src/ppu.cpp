@@ -17,6 +17,7 @@ PPUClass::PPUClass()
 {
     NextFrameBuffer = (unsigned char *)VirtualAlloc(0, 256 * 262, MEM_COMMIT, PAGE_READWRITE);
     memset(NextFrameBuffer, 0, 240*256);
+    Register2002 = 0;
 }
 
 void PPUClass::Init(unsigned short Mapper)
@@ -56,10 +57,25 @@ void PPUClass::Init(unsigned short Mapper)
 
 void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
 {
+    if(LastEmulatedCycle > CycleToGet) //Let's avoid infinite loops because of
+                                       //cycle rollover
+    {
+        CycleToGet += NTSC_CYCLE_COUNT;
+    }
+    if((LastEmulatedCycle < NTSC_VBLANK_CYCLE) && (CycleToGet >= NTSC_VBLANK_CYCLE))
+    {
+        Register2002 |= 0b10000000;
+        NES.NMI = true;
+    }
+    if((LastEmulatedCycle < NTSC_VBLANK_UNSET_CYCLE) &&
+       (CycleToGet >= NTSC_VBLANK_UNSET_CYCLE))
+    {
+        Register2002 &= 0b01111111;
+    }
     while(LastEmulatedCycle < CycleToGet)
     {
-        /*LastEmulatedCycle++;
-        if(Scanline == 261) //Pre-render scanline
+        LastEmulatedCycle++;
+        /*if(Scanline == 261) //Pre-render scanline
         {
             if(Dot < (339 + EvenFrame))
             {

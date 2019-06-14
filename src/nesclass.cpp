@@ -6,7 +6,7 @@
    ======================================================================== */
 #include "main.h"
 NESClass::NESClass():
-        CPU(), RAM(),
+        CPU(), RAM(), PPU(),
         Region(NTSC), Speed(1.f),
         Running(true),
         InternalMemory(0),

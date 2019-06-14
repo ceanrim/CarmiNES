@@ -6,6 +6,8 @@
     Creator: Carmine Foggia 
    ======================================================================== */
 #define PPU_H
+#define NTSC_VBLANK_CYCLE       82182
+#define NTSC_VBLANK_UNSET_CYCLE 89002
 class PPUClass
 {
 public:
@@ -14,6 +16,7 @@ public:
     unsigned           Dot;
     unsigned           EvenFrame;
     unsigned char* NextFrameBuffer;
+    unsigned char  Register2002;
     unsigned char* Nametables[4];
     unsigned char  Nametable0[1024];
     unsigned char  Nametable1[1024];

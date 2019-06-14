@@ -43,6 +43,13 @@ unsigned char MemoryClass::Read(unsigned short Address)
     {
         return NES.InternalMemory[Address % 0x800];
     }
+    else if(Address == 0x2002)
+    {
+        NES.PPU.Run(NES.FrameCycle);
+        unsigned char toReturn = NES.PPU.Register2002;
+        NES.PPU.Register2002 &= 0b01111111;
+        return toReturn;
+    }
     else if((Address >= 0x6000) && (Address < 0x8000))
     {
         return NES.WRAM[Address - 0x6000];
