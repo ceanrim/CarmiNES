@@ -4,6 +4,9 @@
    $Revision: $
    $Creator: Carmine Foggia $
    ======================================================================== */
+//What you were doing yesterday: implementing palette rendering in the debugger
+//TODO: Power up state
+//      PPU read/write buffer
 #include <windows.h>
 #include "..\res\resource.h"
 #include "main.h"
@@ -843,6 +846,102 @@ LRESULT CALLBACK CHRROMViewerProc
     }
 }
 
+void RefreshPaletteViewer()
+{
+    if(NES.ROMFile)
+    {
+        {
+            for(int i = 0; i < 4; i++) //Background palettes
+            {
+                for(int j = 0; j < 16; j++) //Rows
+                {
+                    for(int k = 0; k < 4; k++) //Palette colors
+                    {
+                        for(int l = 0; l < 16; l++) //Columns
+                        {
+                            unsigned Color =
+                                NES.Debugger.ColorRGBTable
+                                [NES.PPU.BackgroundPalettes[i][k]];
+                            NES.Debugger.PalettesRendered
+                                [i * 16 * 64 + j * 64 + k * 16 + l] = Color;
+                        }
+                    }
+                }
+            }
+            for(int i = 4; i < 8; i++) //Sprite palettes
+            {
+                for(int j = 0; j < 16; j++) //Rows
+                {
+                    for(int k = 0; k < 4; k++) //Palette colors
+                    {
+                        for(int l = 0; l < 16; l++) //Columns
+                        {
+                            unsigned Color =
+                                NES.Debugger.ColorRGBTable
+                                [NES.PPU.SpritePalettes[i - 4][k]];
+                            NES.Debugger.PalettesRendered
+                                [i * 16 * 64 + j * 64 + k * 16 + l] = Color;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+LRESULT CALLBACK PaletteViewerProc
+(HWND   hWnd,
+ UINT   uMsg,
+ WPARAM wParam,
+ LPARAM lParam)
+{
+    switch(uMsg)
+    {
+        case WM_INITDIALOG:
+        {
+            NES.Debugger.PalettesRendered = (unsigned *)
+                VirtualAlloc(0, 4 * 64 * 128, MEM_COMMIT, PAGE_READWRITE);
+            RefreshPaletteViewer();
+            return TRUE;
+        }
+        case WM_PAINT:
+        {
+            RefreshPaletteViewer();
+            HDC DeviceContext = GetDC(hWnd);
+            RECT ClientRect;
+            GetClientRect(hWnd, &ClientRect);
+            StretchDIBits(DeviceContext,
+                          0, 0,
+                          ClientRect.right - ClientRect.left,
+                          ClientRect.bottom - ClientRect.top,
+                          0, 0, 64, 128,
+                          NES.Debugger.PalettesRendered,
+                          &NES.Debugger.PTInfo,
+                          DIB_RGB_COLORS, SRCCOPY);
+            ReleaseDC(hWnd, DeviceContext);
+            return TRUE;
+        }
+        case WM_CLOSE:
+        case WM_DESTROY:
+        {
+            if(NES.Debugger.PalettesRendered)
+            {
+                VirtualFree(NES.Debugger.PalettesRendered,
+                            4 * 128 * 64, MEM_RELEASE);
+                NES.Debugger.PalettesRendered = 0;
+            }
+            DestroyWindow(hWnd);
+            NES.Debugger.PaletteViewerHandle = 0;
+            NES.Debugger.isPaletteViewerOpen = false;
+            return TRUE;
+        }
+        default:
+        {
+            return FALSE;
+        }
+    }
+}
+
 LRESULT CALLBACK DebuggerProc
 (HWND   hWnd,
  UINT   uMsg,
@@ -961,6 +1060,23 @@ LRESULT CALLBACK DebuggerProc
                             NES.Debugger.isCHRROMViewerOpen = true;
                         }
                     }
+                    break;
+                }
+                case ID_PPU_PALETTES:
+                {
+                    if(!NES.Debugger.isPaletteViewerOpen)
+                    {
+                        NES.Debugger.PaletteViewerHandle =
+                            CreateDialog(GetModuleHandle(NULL),
+                                         MAKEINTRESOURCE(IDD_PALETTES),
+                                         hWnd, PaletteViewerProc);
+                        if(NES.Debugger.PaletteViewerHandle)
+                        {
+                            ShowWindow(NES.Debugger.PaletteViewerHandle, SW_SHOW);
+                            NES.Debugger.isPaletteViewerOpen = true;
+                        }
+                    }
+                    break;
                 }
                 default:
                 {
@@ -1106,7 +1222,7 @@ LRESULT CALLBACK MainWindowCallback
                 case ID_EMULATOR_RESET:
                 {
                     NES.CPU.Reset();
-                    break;
+                    return 0;
                 }
                 case ID_TOOLS_DEBUGGER:
                 {

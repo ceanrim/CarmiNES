@@ -35,9 +35,9 @@ void MemoryClass::Destroy()
 
 unsigned char MemoryClass::Read(unsigned short Address)
 /*NES memory structure:
-  0x0000-0x07ff Internal Memory
-  0x0800-0x1fff Mirrors three times 0x0000-0x07ff
-  ...To be completed...*/
+ 0x0000-0x07ff Internal Memory
+ 0x0800-0x1fff Mirrors three times 0x0000-0x07ff
+ ...To be completed...*/
 {
     if(Address < 0x2000)
     {
@@ -73,10 +73,10 @@ unsigned char MemoryClass::Read(unsigned short Address)
 
 unsigned char MemoryClass::ReadWithNoSideEffects(unsigned short Address)
 /*NES memory structure:
-  0x0000-0x07ff Internal Memory
-  0x0800-0x1fff Mirrors three times 0x0000-0x07ff
-  0x8000-0xffff Cartridge space
-  ...To be completed...*/
+ 0x0000-0x07ff Internal Memory
+ 0x0800-0x1fff Mirrors three times 0x0000-0x07ff
+ 0x8000-0xffff Cartridge space
+ ...To be completed...*/
 {
     if(Address < 0x2000)
     {
@@ -100,7 +100,7 @@ unsigned char MemoryClass::ReadWithNoSideEffects(unsigned short Address)
     }
 }
 void MemoryClass::Read(unsigned char  addrMode,
-                       unsigned char* valueToRewrite)
+                      unsigned char* valueToRewrite)
 {
     switch(addrMode)
     {
@@ -279,7 +279,7 @@ void MemoryClass::Read(unsigned char  addrMode,
     }
 }
 void MemoryClass::Write(unsigned short address,
-                        unsigned char valueToWrite)
+                       unsigned char valueToWrite)
 {
     if(address < 0x2000)
     {
@@ -288,14 +288,15 @@ void MemoryClass::Write(unsigned short address,
     else if((address >= 0x2000) && (address < 0x4000))
     {
         NES.PPU.Run(NES.FrameCycle);
-        NES.PPU.IODB = valueToWrite;
-        switch(address & 8)
+        switch(address & 7)
         {
             case 0:
             {
-                NES.PPU.NametableBase = valueToWrite & 3;
-                NES.PPU.PatternTableBase = (valueToWrite & 0x10) >> 4;
-                if(valueToWrite & 11101100)
+                NES.PPU.IODB = valueToWrite; //TODO: Implement this everywhere
+                NES.PPU.NametableBase = valueToWrite & 3; //TODO: Bit 0 race condition
+                NES.PPU.PatternTableBase = (valueToWrite & 0x10) >> 4; //TODO: Actually do this
+                NES.PPU.PPUADDRIncrement = (valueToWrite & 4) ? 32 : 1;
+                if(valueToWrite & 11101000)
                 {
                     char ErrorMessage[] = "Tried to write value $00 at $0000.";
                     UchartoHex(valueToWrite, ErrorMessage + 22, false);
@@ -304,18 +305,41 @@ void MemoryClass::Write(unsigned short address,
                 }
                 break;
             }
+            case 6:
+            {
+                if(NES.PPU.PPUADDRWriteTick)
+                {
+                    NES.PPU.VRAMAddr &= 0b1111111100000000;
+                    NES.PPU.VRAMAddr |= valueToWrite;
+                }
+                else
+                {
+                    NES.PPU.VRAMAddr &= 255;
+                    NES.PPU.VRAMAddr |= ((unsigned short)(valueToWrite) << 8);
+                }
+                NES.PPU.VRAMAddr &= 0x3FFF;
+                NES.PPU.PPUADDRWriteTick = (!(NES.PPU.PPUADDRWriteTick));
+                break;
+            }
+            case 7:
+            {
+                NES.PPU.Write(valueToWrite);
+                break;
+            }
             default:
             {
                 char ErrorMessage[] = "Tried to write value $00 at $0000.";
                 UchartoHex(valueToWrite, ErrorMessage + 22, false);
                 UshorttoHex(address, ErrorMessage + 29, false);
                 MessageBox(0, ErrorMessage, "Error", IDOK);
+                break;
             }
         }
     }
     else if(address == 0x4014)
     {
         //TODO: This skips a cycle if we start on an odd cycle
+        //TODO: OAMADDR register
         NEXT_CYCLE;
         for(unsigned short i = 0; i < 256; i++)
         {

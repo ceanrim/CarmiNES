@@ -20,7 +20,9 @@ PPUClass::PPUClass()
         :LastEmulatedCycle(0),
          Scanline(261),
          Dot(0),
-         EvenFrame(true)
+         EvenFrame(true),
+         VRAMAddr(0),
+         PPUADDRWriteTick(0)
 {
     NextFrameBuffer = (unsigned char *)VirtualAlloc(0, 256 * 262, MEM_COMMIT, PAGE_READWRITE);
     memset(NextFrameBuffer, 0, 240*256);
@@ -61,6 +63,8 @@ void PPUClass::Init(unsigned short Mapper)
     memset(Nametable1, 0, 1024);
     memset(Nametable2, 0, 1024);
     memset(Nametable3, 0, 1024);
+    memset(BackgroundPalettes, 0, 16);
+    memset(SpritePalettes, 0, 16);
 }
 
 void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
@@ -146,4 +150,42 @@ void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
             }
             }*/
     }
+}
+
+void PPUClass::Write(unsigned char valueToWrite) //TODO: Buffering
+{
+    //For now we only simulate palette writing
+    if(VRAMAddr >= 0x3F00)
+    {
+        if(VRAMAddr & 3)
+        {
+            if(VRAMAddr & 16) //Sprite palettes
+            {
+                SpritePalettes[(VRAMAddr & 12) >> 2][VRAMAddr & 3] = valueToWrite;
+            }
+            else
+            {
+                BackgroundPalettes[(VRAMAddr & 12) >> 2][VRAMAddr & 3] = valueToWrite;
+            }
+        }
+        else
+        {
+            BackgroundPalettes[0][0] = valueToWrite;
+            BackgroundPalettes[1][0] = valueToWrite;
+            BackgroundPalettes[2][0] = valueToWrite;
+            BackgroundPalettes[3][0] = valueToWrite;
+            SpritePalettes[0][0]     = valueToWrite;
+            SpritePalettes[1][0]     = valueToWrite;
+            SpritePalettes[2][0]     = valueToWrite;
+            SpritePalettes[3][0]     = valueToWrite;
+        }
+    }
+    else
+    {
+        char ErrorMessage[] = "Tried to write value $00 at $0000 in PPU.";
+        UchartoHex(valueToWrite, ErrorMessage + 22, false);
+        UshorttoHex(VRAMAddr, ErrorMessage + 29, false);
+        MessageBox(0, ErrorMessage, "Error", IDOK);
+    }
+    VRAMAddr += PPUADDRIncrement;
 }
