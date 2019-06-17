@@ -20,12 +20,9 @@ PPUClass::PPUClass()
         :LastEmulatedCycle(0),
          Scanline(261),
          Dot(0),
-         EvenFrame(true),
          VRAMAddr(0),
          PPUADDRWriteTick(0)
 {
-    NextFrameBuffer = (unsigned char *)VirtualAlloc(0, 256 * 262, MEM_COMMIT, PAGE_READWRITE);
-    memset(NextFrameBuffer, 0, 240*256);
     memset(OAM, 0, 256);
     Register2002 = 0;
 }
@@ -73,6 +70,8 @@ void PPUClass::Init(unsigned short Mapper)
     memset(SpritePalettes, 0, 16);
 }
 
+//TODO: The PPU processes pixels 8 by 8, implement this
+
 void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
 {
     bool RollingOver = false;
@@ -82,7 +81,7 @@ void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
         RollingOver = true;
         CycleToGet += NTSC_CYCLE_COUNT;
     }
-    if((LastEmulatedCycle < NTSC_VBLANK_CYCLE) && (CycleToGet >= NTSC_VBLANK_CYCLE))
+    /*if((LastEmulatedCycle < NTSC_VBLANK_CYCLE) && (CycleToGet >= NTSC_VBLANK_CYCLE))
     {
         Register2002 |= 0b10000000;
         NES.NMI = true;
@@ -91,38 +90,44 @@ void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
        (CycleToGet >= NTSC_VBLANK_UNSET_CYCLE))
     {
         Register2002 &= 0b01111111;
-    }
+        }*/
     while(LastEmulatedCycle < CycleToGet)
     {
         LastEmulatedCycle += 5;
-        /*if(Scanline == 261) //Pre-render scanline
+        if(Scanline == 261) //Pre-render scanline
         {
-            if(Dot < (339 + EvenFrame))
+            if(Dot == 0)
+            {
+                Register2002 &= 0b01111111;
+                Dot++;
+            }
+            else if(Dot < (338 + (NES.FrameCount & 1)?0:1))
             {
                 Dot++;
             }
             else
             {
-                Dot = 0;
+                Dot = -1;
                 Scanline = 0;
             }
         }
         else if(Scanline <= 239)
         {
-            if(Dot == 0)
+            if(Dot == -1)
             {
                 Dot++;
             }
-            else if(Dot <= 256)
+            else if(Dot <= 255)
             {
                 unsigned char BackgroundTile =
-                    Nametables[NametableBase][Dot >> 3];
+                    Nametables[NametableBase][((Scanline >> 3) << 5) +
+                                              Dot >> 3];
                 unsigned char Palette =
-                    NameTables[NametableBase]
-                    [960 + ((Scanline >> 5) << 3) + (Dot >> 3)];
-                if(Scanline & 4)
+                    Nametables[NametableBase]
+                    [960 + ((Scanline >> 5) << 3) + (Dot >> 5)];
+                if(Scanline & 16)
                 {
-                    if(Dot & 4)
+                    if(Dot & 16)
                     {
                         Palette >>= 6;
                     }
@@ -134,7 +139,7 @@ void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
                 }
                 else
                 {
-                    if(Dot & 4)
+                    if(Dot & 16)
                     {
                         Palette >>= 2;
                         Palette &= 3;
@@ -147,16 +152,72 @@ void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
                 unsigned char Color = 0;
                 Color =
                     (PatternTables[PatternTableBase]
-                     [(BackgroundTile << 4) + (Scanline & 7)] >>
-                     (6 - (Dot & 7)));
+                     [(BackgroundTile << 4) + (Scanline & 7)] &
+                     (1 << (7 - (Dot & 7)))) >> (7 - (Dot & 7));
                 Color |=
-                    (PatternTables[PatternTableBase]
-                     [(BackgroundTile << 4) + (Scanline & 7) + 8] >>
-                     (7 - (Dot & 7)));
-                Color |= (Palette << 2);
-                NextFrameBuffer[(Scanline << 8) + Dot] = Color;
+                    ((PatternTables[PatternTableBase]
+                      [(BackgroundTile << 4) + (Scanline & 7) + 8] &
+                      (1 << (7 - (Dot & 7)))) >> (7 - (Dot & 7)) << 1);
+                NES.RenderBuffer.Memory[(Scanline << 8) + Dot] =
+                    NES.Debugger.ColorRGBTable
+                    [NES.PPU.BackgroundPalettes[Palette][Color]];
+                Dot++;
             }
-            }*/
+            else if(Dot < 339)
+            {
+                Dot++;
+            }
+            else
+            {
+                Scanline++;
+                Dot = -1;
+            }
+        }
+        else if(Scanline == 240)
+        {
+            if(Dot < 339)
+            {
+                Dot++;
+            }
+            else
+            {
+                Scanline++;
+                Dot = -1;
+            }
+        }
+        else if(Scanline == 241)
+        {
+            if(Dot == 0)
+            {
+                Register2002 |= 0b10000000;
+                if(NES.NMIEnabled)
+                {
+                    NES.NMI = true;
+                }
+                Dot++;
+            }
+            else if(Dot < 339)
+            {
+                Dot++;
+            }
+            else
+            {
+                Scanline++;
+                Dot = -1;
+            }
+        }
+        else if(Scanline < 261)
+        {
+            if(Dot < 339)
+            {
+                Dot++;
+            }
+            else
+            {
+                Scanline++;
+                Dot = -1;
+            }
+        }
     }
     if(RollingOver)
     {

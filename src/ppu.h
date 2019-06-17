@@ -12,10 +12,8 @@ class PPUClass
 {
 public:
     unsigned long long LastEmulatedCycle;
-    unsigned           Scanline;
-    unsigned           Dot;
-    unsigned           EvenFrame;
-    unsigned char*     NextFrameBuffer;
+    int                Scanline;
+    int                Dot;
     unsigned char      Register2002;
     unsigned char*     Nametables[4];
     unsigned char      Nametable0[1024];

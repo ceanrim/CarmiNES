@@ -14,7 +14,7 @@ class RenderBufferClass
 {
 public:
     BITMAPINFO Info;
-    void *Memory;
+    unsigned *Memory;
     int Width;
     int Height;
 };
@@ -47,6 +47,7 @@ public:
     unsigned long long MasterCycle;
     unsigned long long FrameCycle;
     bool               NMI;
+    bool               NMIEnabled;
     NESClass();
 };
 #endif

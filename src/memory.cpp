@@ -64,6 +64,7 @@ unsigned char MemoryClass::Read(unsigned short Address)
     }
     else
     {
+        //Wanna see how it goes
         char ErrorMessage[] = "Tried to read at $0000.";
         UshorttoHex(Address, ErrorMessage + 18, false);
         MessageBox(0, ErrorMessage, "Error", IDOK);
@@ -296,7 +297,8 @@ void MemoryClass::Write(unsigned short address,
                 NES.PPU.NametableBase = valueToWrite & 3; //TODO: Bit 0 race condition
                 NES.PPU.PatternTableBase = (valueToWrite & 0x10) >> 4; //TODO: Actually do this
                 NES.PPU.PPUADDRIncrement = (valueToWrite & 4) ? 32 : 1;
-                if(valueToWrite & 11101000)
+                NES.NMIEnabled = (valueToWrite & 128);
+                if(valueToWrite & 01101000)
                 {
                     char ErrorMessage[] = "Tried to write value $00 at $0000.";
                     UchartoHex(valueToWrite, ErrorMessage + 22, false);

@@ -1401,7 +1401,7 @@ LRESULT CALLBACK MainWindowCallback
             BeginPaint(hWnd, &ps);
             RECT ClientRect;
             GetClientRect(NES.Window, &ClientRect);
-            TestRender(0);
+            //TestRender(0);
             int a = StretchDIBits(NES.MainWindowDC,
                           0, 0,
                           ClientRect.right  - ClientRect.left,
@@ -1430,17 +1430,17 @@ int CALLBACK WinMain
     NES = NESClass();
     NES.LogFileHandle = INVALID_HANDLE_VALUE;
     NES.RenderBuffer.Width                        = 256;
-    NES.RenderBuffer.Height                       = -262;
+    NES.RenderBuffer.Height                       = -240;
     NES.RenderBuffer.Info.bmiHeader.biSize        =
         sizeof(NES.RenderBuffer.Info.bmiHeader);
     NES.RenderBuffer.Info.bmiHeader.biWidth       = 256;
-    NES.RenderBuffer.Info.bmiHeader.biHeight      = -262;
+    NES.RenderBuffer.Info.bmiHeader.biHeight      = -240;
     NES.RenderBuffer.Info.bmiHeader.biPlanes      = 1;
     NES.RenderBuffer.Info.bmiHeader.biBitCount    = 32;
     NES.RenderBuffer.Info.bmiHeader.biCompression = BI_RGB;
     NES.RenderBuffer.Memory =
-        VirtualAlloc(0, 4 * 256 * 262, MEM_COMMIT, PAGE_READWRITE);
-    memset(NES.RenderBuffer.Memory, 0, 4 * 256 * 262);
+        (unsigned *)VirtualAlloc(0, 4 * 256 * 240, MEM_COMMIT, PAGE_READWRITE);
+    memset(NES.RenderBuffer.Memory, 0, 4 * 256 * 240);
     
     if(!CreateLogFile())
     {
@@ -1534,7 +1534,7 @@ int CALLBACK WinMain
                 NES.CPU.Run();
             }
         }
-        TestRender(0);
+        //TestRender(0);
         RECT ClientRect;
         GetClientRect(NES.Window, &ClientRect);
         StretchDIBits(NES.MainWindowDC,
