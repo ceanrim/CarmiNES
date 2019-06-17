@@ -63,15 +63,23 @@ void PPUClass::Init(unsigned short Mapper)
     memset(Nametable1, 0, 1024);
     memset(Nametable2, 0, 1024);
     memset(Nametable3, 0, 1024);
-    memset(BackgroundPalettes, 0, 16);
+    //memset(BackgroundPalettes, 0, 16);
+    //FOR DEBUG:
+    BackgroundPalettes[0][0] = 0x0F;
+    BackgroundPalettes[0][1] = 0x16;
+    BackgroundPalettes[0][2] = 0x30;
+    BackgroundPalettes[0][3] = 0x37;
+    memset(BackgroundPalettes[1], 0, 12);
     memset(SpritePalettes, 0, 16);
 }
 
 void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
 {
+    bool RollingOver = false;
     if(LastEmulatedCycle > CycleToGet) //Let's avoid infinite loops because of
                                        //cycle rollover
     {
+        RollingOver = true;
         CycleToGet += NTSC_CYCLE_COUNT;
     }
     if((LastEmulatedCycle < NTSC_VBLANK_CYCLE) && (CycleToGet >= NTSC_VBLANK_CYCLE))
@@ -86,7 +94,7 @@ void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
     }
     while(LastEmulatedCycle < CycleToGet)
     {
-        LastEmulatedCycle++;
+        LastEmulatedCycle += 5;
         /*if(Scanline == 261) //Pre-render scanline
         {
             if(Dot < (339 + EvenFrame))
@@ -150,12 +158,23 @@ void PPUClass::Run(unsigned long long CycleToGet) //Only NTSC for now
             }
             }*/
     }
+    if(RollingOver)
+    {
+        LastEmulatedCycle -= NTSC_CYCLE_COUNT;
+    }
 }
 
 void PPUClass::Write(unsigned char valueToWrite) //TODO: Buffering
 {
-    //For now we only simulate palette writing
-    if(VRAMAddr >= 0x3F00)
+    if(VRAMAddr < 0x1FFF)
+    {
+        PatternTables[(VRAMAddr & 0x1000) >> 12][VRAMAddr & 0x0FFF] = valueToWrite;
+    }
+    else if((VRAMAddr >= 0x2000) && (VRAMAddr < 0x3F00))
+    {
+        Nametables[(VRAMAddr & 0x0C00) >> 14][VRAMAddr & 0x03FF] = valueToWrite;
+    }
+    else if(VRAMAddr >= 0x3F00)
     {
         if(VRAMAddr & 3)
         {

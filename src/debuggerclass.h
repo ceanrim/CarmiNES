@@ -6,21 +6,26 @@
     Creator: Carmine Foggia 
    ======================================================================== */
 
-#define DEBUGGERCLASS_H
 #include <windows.h>
-
+#define DEBUGGERCLASS_H
 class DebuggerClass
 {
 public:
     bool isDebuggerActive;
     bool isCHRROMViewerOpen;
     bool isPaletteViewerOpen;
+    bool isNametableViewerOpen;
     unsigned short CurrentMemoryAddress;
     HWND DebuggerHandle;
     HWND CHRROMViewerHandle;
     HWND PaletteViewerHandle;
+    HWND NametableViewerHandle;
     unsigned *PatternTablesRendered;
     unsigned *PalettesRendered;
+    unsigned *NametableRendered;
+/*CHRROMViewerClass CHRROMViewer;
+    PaletteViewerClass PaletteViewer;
+    NametableViewerClass NametableViewer;*/
     unsigned ColorRGBTable[64] =
     {
         0x00545454, 0x00001E74, 0x00081090, 0x00300088,
@@ -45,8 +50,8 @@ public:
     } ;
     BITMAPINFO PTRInfo;
     BITMAPINFO PTInfo;
+    BITMAPINFO NTInfo;
     unsigned  Greys[4];
     DebuggerClass();
 };
-
 #endif

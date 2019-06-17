@@ -4,7 +4,7 @@
    $Revision: $
    $Creator: Carmine Foggia $
    ======================================================================== */
-//What you were doing yesterday: implementing palette rendering in the debugger
+//What you were doing yesterday: implementing the PPU rendering pipeline
 //TODO: Power up state
 //      PPU read/write buffer
 #include <windows.h>
@@ -942,6 +942,109 @@ LRESULT CALLBACK PaletteViewerProc
     }
 }
 
+void RefreshNametableViewer()
+{
+    if(NES.ROMFile)
+    {
+        for(int i = 0; i < 2; i++) //Nametable rows
+        {
+            unsigned basePosition0 = 2 * i * 256 * 240;
+            for(int j = 0; j < 2; j++) //Nametable columns
+            {
+                unsigned basePosition1 = basePosition0 + j * 256;
+                for(int k = 0; k < 240; k++) //Rows
+                {
+                    unsigned basePosition2 = basePosition1 + k * 2 * 256;
+                    for(int l = 0; l < 256; l++) //'Pixels'
+                    {
+                        unsigned Position = basePosition2 + l;
+                        unsigned NametableRow = k / 8;
+                        unsigned NametableColumn = l / 8;
+                        unsigned NametableEntry = NametableColumn + NametableRow * 32;
+                        unsigned CurrentNameTable = i * 2 + j;
+                        unsigned char TileToFetch = NES.PPU.Nametables[CurrentNameTable]
+                            [NametableEntry];
+                        unsigned AttributeRow = k / 32;
+                        unsigned AttributeColumn = l / 32;
+                        unsigned AttributeEntry = AttributeRow * 8 + AttributeColumn;
+                        unsigned LocationInsideEntry =
+                            (NametableRow & 2) +
+                            ((NametableColumn & 2) >> 1);
+                        unsigned char PaletteToUse =
+                            ((NES.PPU.Nametables
+                              [CurrentNameTable]
+                              [960 + AttributeEntry] & (3 << (2*LocationInsideEntry)))
+                             >> (2 * LocationInsideEntry));
+                        unsigned char CHRROMColor =
+                            ((NES.PPU.PatternTables[NES.PPU.PatternTableBase]
+                              [(TileToFetch << 4) + (k & 7)]) & (1 << (7 - (l & 7)))) >> (7 - (l & 7));
+                        CHRROMColor |=
+                            (((NES.PPU.PatternTables[NES.PPU.PatternTableBase]
+                               [(TileToFetch << 4) + 8 + (k & 7)]) & (1 << (7 - (l & 7))))
+                             >> (7 - (l & 7)))
+                            << 1;
+                        unsigned char Color = NES.PPU.BackgroundPalettes[PaletteToUse][CHRROMColor];
+                        NES.Debugger.NametableRendered[Position] = NES.Debugger.ColorRGBTable[Color];
+                    }
+                }
+            }
+        }
+    }
+}
+
+LRESULT CALLBACK NametableViewerProc
+(HWND   hWnd,
+ UINT   uMsg,
+ WPARAM wParam,
+ LPARAM lParam)
+{
+    switch(uMsg)
+    {
+        case WM_INITDIALOG:
+        {
+            NES.Debugger.NametableRendered = (unsigned *)
+                VirtualAlloc(0, 4 * 512 * 480, MEM_COMMIT, PAGE_READWRITE);
+            RefreshNametableViewer();
+            return TRUE;
+        }
+        case WM_PAINT:
+        {
+            RefreshNametableViewer();
+            HDC DeviceContext = GetDC(hWnd);
+            RECT ClientRect;
+            GetClientRect(hWnd, &ClientRect);
+            int a = StretchDIBits(DeviceContext,
+                          0, 0,
+                          ClientRect.right - ClientRect.left,
+                          ClientRect.bottom - ClientRect.top,
+                          0, 0, 512, 480,
+                          NES.Debugger.NametableRendered,
+                          &NES.Debugger.NTInfo,
+                          DIB_RGB_COLORS, SRCCOPY);
+            ReleaseDC(hWnd, DeviceContext);
+            return TRUE;
+        }
+        case WM_CLOSE:
+        case WM_DESTROY:
+        {
+            if(NES.Debugger.NametableRendered)
+            {
+                VirtualFree(NES.Debugger.NametableRendered,
+                            4 * 512 * 480, MEM_RELEASE);
+                NES.Debugger.NametableRendered = 0;
+            }
+            DestroyWindow(hWnd);
+            NES.Debugger.NametableViewerHandle = 0;
+            NES.Debugger.isNametableViewerOpen = false;
+            return TRUE;
+        }
+        default:
+        {
+            return FALSE;
+        }
+    }
+}
+
 LRESULT CALLBACK DebuggerProc
 (HWND   hWnd,
  UINT   uMsg,
@@ -1060,6 +1163,7 @@ LRESULT CALLBACK DebuggerProc
                             NES.Debugger.isCHRROMViewerOpen = true;
                         }
                     }
+                    //NES.Debugger.CHRROMViewer.Open(hWnd);
                     break;
                 }
                 case ID_PPU_PALETTES:
@@ -1076,6 +1180,25 @@ LRESULT CALLBACK DebuggerProc
                             NES.Debugger.isPaletteViewerOpen = true;
                         }
                     }
+                    //NES.Debugger.PaletteViewer.Open(hWnd);
+                    break;
+                }
+                case ID_PPU_NAMETABLE:
+                {
+                    
+                    if(!NES.Debugger.isNametableViewerOpen)
+                    {
+                        NES.Debugger.NametableViewerHandle =
+                            CreateDialog(GetModuleHandle(NULL),
+                                         MAKEINTRESOURCE(IDD_NAMETABLES),
+                                         hWnd, NametableViewerProc);
+                        if(NES.Debugger.NametableViewerHandle)
+                        {
+                            ShowWindow(NES.Debugger.NametableViewerHandle, SW_SHOW);
+                            NES.Debugger.isNametableViewerOpen = true;
+                        }
+                    }
+                    //NES.Debugger.NametableViewer.Open(hWnd);
                     break;
                 }
                 default:

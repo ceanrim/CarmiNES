@@ -1182,6 +1182,7 @@ void CPUClass::Run()
             return;
         }
     }
+    NES.PPU.Run(NES.FrameCycle);
     return; //TODO
 }
 

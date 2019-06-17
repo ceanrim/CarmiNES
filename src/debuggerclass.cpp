@@ -5,17 +5,21 @@
     Creator: Carmine Foggia 
    ======================================================================== */
 
+#include "..\res\resource.h"
 #include "debuggerclass.h"
-
 DebuggerClass::DebuggerClass():
         isDebuggerActive(false),
         isCHRROMViewerOpen(false),
         isPaletteViewerOpen(false),
+        isNametableViewerOpen(false),
         CurrentMemoryAddress(0),
         DebuggerHandle(0),
         CHRROMViewerHandle(0),
+        PaletteViewerHandle(0),
+        NametableViewerHandle(0),
         PatternTablesRendered(0),
-        PalettesRendered(0)
+        PalettesRendered(0),
+        NametableRendered(0)
 {
     Greys[0] = 0;
     Greys[1] = 0x555555;
@@ -33,4 +37,10 @@ DebuggerClass::DebuggerClass():
     PTInfo.bmiHeader.biPlanes = 1;
     PTInfo.bmiHeader.biBitCount = 32;
     PTInfo.bmiHeader.biCompression = BI_RGB;
+    NTInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    NTInfo.bmiHeader.biWidth = 512;
+    NTInfo.bmiHeader.biHeight = -480;
+    NTInfo.bmiHeader.biPlanes = 1;
+    NTInfo.bmiHeader.biBitCount = 32;
+    NTInfo.bmiHeader.biCompression = BI_RGB;
 }

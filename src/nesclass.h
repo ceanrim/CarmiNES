@@ -6,6 +6,7 @@
     Creator: Carmine Foggia 
    ======================================================================== */
 #define NESCLASS_H
+#include "memory.h"
 #include "cpu.h"
 #include "debuggerclass.h"
 #include "ppu.h"
